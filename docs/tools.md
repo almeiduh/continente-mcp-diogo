@@ -1,15 +1,16 @@
 # Tool reference
 
-Continente MCP exposes 11 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 12 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
 | Tool | Login | Changes the cart | Inputs |
 | --- | --- | --- | --- |
-| `search_products` | No | No | `query`, `limit` (1–50, default 10) |
+| `search_products` | No | No | `query`, `limit` (1–50, default 10), `cursor?`, `favoritesFirst` (default `false`) |
 | `get_product` | No | No | `productId` |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
 | `get_cart` | Yes | No | — |
+| `preview_basket` | Yes | No | `items` (1–30 of `productId`, `quantity` ≥ 0, `cartItemId?`) |
 | `add_cart_item` | Yes | Yes | `productId`, `quantity` (> 0, default 1), `cartItemId?` |
 | `set_cart_item_quantity` | Yes | Yes | `productId`, `quantity` (≥ 0), `cartItemId?` |
 | `remove_cart_item` | Yes | Yes | `productId`, `cartItemId?` |
@@ -179,6 +180,30 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   | `estimated` | Some lines are charged by weight, so `products` and `grandTotal` are estimates |
 
   Report `grandTotal` as the amount to pay, and don't add the other fields to it yourself.
+
+### `preview_basket`
+
+Shows what `set_cart_item_quantity` would do for a list of products and desired totals, without
+changing anything. It reads the cart once and each product page once, so it takes about a
+second per item.
+
+`data`: `observedAt`, `lines`, `estimatedCost` (the sum of the lines that would be applied, or
+`null` when any of their costs is unknown), `estimated` and `problems` (lines that would be
+refused or whose product is not available). Each line has:
+
+| Field | Meaning |
+| --- | --- |
+| `productId`, `cartItemId`, `name` | The product, and the cart line it would change |
+| `requested` | The desired total, in the sale unit |
+| `current` | What the cart holds now; zero when the product is not in it |
+| `change` | `add`, `increase`, `decrease`, `remove` or `none`; `null` when it would be refused |
+| `error` | Why it would be refused, such as `quantity_below_minimum` or a fractional number of pieces |
+| `availability`, `price`, `packageText`, `package`, `saleRules` | As in `get_product` |
+| `estimatedCost`, `estimated` | The desired total at today's price; `estimated` for products charged by weight |
+
+A preview is not a reservation: prices and stock can change before you apply it, and each change
+is still confirmed by `set_cart_item_quantity`. `package` helps catch a mix-up such as six
+cartons of milk instead of one pack of six.
 
 ### Changing the cart
 

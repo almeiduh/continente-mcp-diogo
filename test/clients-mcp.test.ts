@@ -18,7 +18,7 @@ import test from 'node:test';
 
 test('shopping tools work through real MCP transport using injected clients', async t => {
   const { state, services } = injectedServices(); const { client } = await connect(t, services);
-  assert.equal((await client.listTools()).tools.length, 11); assert.equal(state.reads, 0);
+  assert.equal((await client.listTools()).tools.length, 12); assert.equal(state.reads, 0);
   const search = await client.callTool({ name: 'search_products', arguments: { query: 'milk', limit: 1 } });
   assert.equal(present(dataOf(search, SearchData).products[0]).productId, '00123');
   assert.equal(present(present(dataOf(search, SearchData).products[0]).price).amount.minorUnits, 129);
@@ -84,7 +84,8 @@ test('discovery schemas describe strict inputs, defaults, outputs and operation 
     assert.deepEqual(present(tool.outputSchema).required, ['result']);
     for (const key of ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'] as const) assert.equal(typeof present(tool.annotations)[key], 'boolean');
     const args = tool.name === 'search_products' ? { query: 'milk' } : ['add_cart_item', 'set_cart_item_quantity'].includes(tool.name) ? { productId: ProductIdSchema.parse('00123'), quantity: 1 } :
-      ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: ProductIdSchema.parse('00123') } : tool.name === 'get_order' ? { orderId: 'first' } : {};
+      ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: ProductIdSchema.parse('00123') } : tool.name === 'get_order' ? { orderId: 'first' } :
+      tool.name === 'preview_basket' ? { items: [{ productId: '00123', quantity: 1 }] } : {};
     const result = await client.callTool({ name: tool.name, arguments: args });
     assert.equal(validator.getValidator(validatorSchema(present(tool.outputSchema)))(result.structuredContent).valid, true, tool.name);
     assert.equal(statusOf(result), 'success', tool.name);

@@ -120,6 +120,7 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `get_product` | Price, pack size, availability and sale rules for one product |
 | `list_favorites` | Your saved favorites (`refresh: true` fetches the latest) |
 | `get_cart` | Cart lines, quantities, bags and totals |
+| `preview_basket` | What a list of changes would do and cost, without changing the cart |
 | `add_cart_item` | Add an amount on top of what is in the cart |
 | `set_cart_item_quantity` | Make the cart hold exactly a quantity; zero removes |
 | `remove_cart_item` | Remove a line from the cart |

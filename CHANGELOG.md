@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `preview_basket`: for a list of products and desired totals, what the cart holds now, what `set_cart_item_quantity` would do, what would be refused and why, availability, pack details and the estimated cost. It changes nothing.
 - `search_products` accepts `cursor`: pass `nextCursor` back with the same query to continue right after the last product returned. Following cursors never skips or repeats a result. Before, products read beyond `limit` were dropped and `nextCursor` could not be used.
 - `search_products`, `get_product` and `get_cart` return `observedAt`, when the website was read.
 - Cart lines and totals have `estimated`: products sold by the piece but priced by weight are charged by the weight picked, so their line total, and then the cart totals, are estimates. `get_cart` text says "about" for them.

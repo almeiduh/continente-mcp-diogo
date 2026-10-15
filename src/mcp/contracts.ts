@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_REFERENCE_LENGTH, isProductReference, CartSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
+import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
   ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
@@ -18,6 +18,11 @@ export const AddCartItemInput = z.strictObject({ productId: ProductReferenceInpu
 export const SetCartItemQuantityInput = z.strictObject({ productId: ProductReferenceInput,
   quantity: z.number().nonnegative().describe('Desired total in the product sale unit. Zero removes the item.'), cartItemId });
 export const RemoveCartItemInput = z.strictObject({ productId: ProductReferenceInput, cartItemId });
+export const PreviewBasketInput = z.strictObject({
+  items: z.array(z.strictObject({ productId: ProductReferenceInput,
+    quantity: z.number().nonnegative().describe('Desired total in the product sale unit, as for set_cart_item_quantity. Zero means remove.'), cartItemId }))
+    .min(1).max(30).describe('Products and the total you want of each, at most 30.'),
+});
 export const GetOrderInput = z.strictObject({ orderId: OrderIdSchema.describe('Internal orderId from list_orders; distinct from the displayed order number.') });
 export const EmptyInput = z.strictObject({});
 export const FavoritesInput = z.strictObject({
@@ -78,6 +83,8 @@ export const FrequencyData = z.strictObject({ products: z.array(PurchaseFrequenc
 export const SearchOutput = outputSchema(SearchData);
 export const FavoritesOutput = outputSchema(FavoritesData);
 export const CartData = CartSchema.safeExtend(observed);
+export const PreviewData = BasketPreviewSchema.safeExtend(observed);
+export const PreviewOutput = outputSchema(PreviewData);
 export const CartOutput = outputSchema(CartData);
 const ConfirmedMutationData = CartMutationResultSchema.options[0].refine(value => value.requested.unit === value.confirmedQuantity.unit);
 export const MutationOutput = outputSchema(ConfirmedMutationData);

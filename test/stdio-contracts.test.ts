@@ -51,7 +51,7 @@ async function wire(t: TestContext, scenario = 'normal', protocolVersion = '2025
 }
 
 test('all tools serialize advertised outputs through real stdio, preserving quantity and scan semantics', { timeout: 15000 }, async t => {
-  const io = await wire(t); const tools = (await io.ask('tools/list', {})).tools; assert.equal(tools.length, 11);
+  const io = await wire(t); const tools = (await io.ask('tools/list', {})).tools; assert.equal(tools.length, 12);
   const validator = new AjvJsonSchemaValidator();
   const call = async (name: string, args: Record<string, unknown> = {}) => {
     const result = await io.ask('tools/call', { name, arguments: args });
@@ -61,7 +61,8 @@ test('all tools serialize advertised outputs through real stdio, preserving quan
     assert.equal(tool.inputSchema.additionalProperties, false); assert.ok(tool.outputSchema); assert.ok(tool.annotations);
     const args = tool.name === 'search_products' ? { query: 'milk' } : tool.name === 'add_cart_item' ? { productId: '00123', quantity: 1 } :
       tool.name === 'set_cart_item_quantity' ? { productId: '00123', quantity: 0 } :
-      ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: '00123' } : tool.name === 'get_order' ? { orderId: 'first' } : {};
+      ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: '00123' } : tool.name === 'get_order' ? { orderId: 'first' } :
+      tool.name === 'preview_basket' ? { items: [{ productId: '00123', quantity: 1 }] } : {};
     await call(tool.name, args);
   }
   const empty = await call('get_cart'); assert.deepEqual(dataOf(empty, CartData).items, []);

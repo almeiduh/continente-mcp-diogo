@@ -2,12 +2,14 @@ import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
-import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
+import type { BasketPreview, PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
 import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchOptions, SearchResult } from '../services/catalog.js';
 import type { CartService } from '../services/cart.js';
+import { BasketPreviewService } from '../services/preview.js';
+import type { PreviewItem } from '../services/preview.js';
 import type { OrderService, PurchaseHistoryService, OrderListOptions } from '../services/orders.js';
 
 export interface ShoppingServices {
@@ -90,6 +92,20 @@ function formatProduct(product: ProductDetails): string {
     `Availability: ${product.availability}`,
     product.saleRules.status === 'available' ? `Sale rules: ${formatSaleRules(product.saleRules.rules)}`
       : `Sale rules unavailable: ${product.saleRules.error.message}`, `URL: ${product.url}`].join('\n');
+}
+function formatPreview(preview: BasketPreview): string {
+  const list = numbered(preview.lines.map(line => {
+    const head = `${line.name ?? 'Unknown product'} [${line.productId}]`;
+    if (line.error) return `${head} — would be refused: ${line.error.message}`;
+    const now = line.current.status === 'known' ? amount(line.current.quantity) : 'unknown';
+    const cost = line.estimatedCost ? `, ${line.estimated ? 'about ' : ''}${euros(line.estimatedCost)}` : ', cost unknown';
+    const pack = line.packageText ? `pack ${line.packageText}${line.package ? ` (${packSummary(line.package)})` : ''}, ` : '';
+    return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'} (cart has ${now})${cost}\n   ${pack}${line.availability}`;
+  }));
+  const total = preview.estimatedCost ? `${preview.estimated ? 'about ' : ''}${euros(preview.estimatedCost)}` : 'unknown';
+  return `Basket preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}` +
+    (preview.problems ? `\n${preview.problems} line(s) need attention: refused or not available.` : '') +
+    '\nApply each line with set_cart_item_quantity. Prices and stock can change before then.';
 }
 function formatOrderLines(order: Order): string {
   if (order.lines.status === 'not_requested') return '   (lines not requested)';
@@ -195,6 +211,12 @@ export class ShoppingHandlers {
     return this.mutation(await this.recover(() => this.services.cart.removeCartItem(reference, cartItemId)), 'remove');
   }
 
+  async previewBasket(items: PreviewItem[]): Promise<CallToolResult> {
+    const result = await this.recover(() => new BasketPreviewService(this.services.catalog, this.services.cart).preview(items));
+    if (!result.ok) return this.failed(result.error);
+    return response({ ...result.value, observedAt: this.observedAt() }, formatPreview(result.value));
+  }
+
   async listOrders(limit: number, options: OrderListOptions): Promise<CallToolResult> {
     const result = await this.recover(() => this.services.orders.listOrders(limit, options));
     if (!result.ok) return this.failed(result.error);
@@ -285,6 +307,11 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),
+    tool('preview_basket', 'Preview basket',
+      'Check products and the total wanted of each before changing the cart, without changing anything. For each: what the cart holds, ' +
+      'what set_cart_item_quantity would do (add, increase, decrease, remove or none), why it would be refused (such as a minimum or step), ' +
+      'availability, pack details and the estimated cost. Reads one product page per item, at most 30. Prices and stock can change before you apply it.',
+      contracts.PreviewBasketInput, contracts.PreviewOutput, READ, args => handlers.previewBasket(args.items)),
     tool('add_cart_item', 'Add to cart',
       'Add an amount of a product to the cart, on top of any quantity already there. quantity is in the product sale unit (default 1). ' +
       `Use set_cart_item_quantity instead when the user wants a specific total. ${UNCERTAIN_WRITE}`,

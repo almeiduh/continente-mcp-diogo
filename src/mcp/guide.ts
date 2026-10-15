@@ -10,7 +10,7 @@ Turn the user's shopping intent into a product list or a verified basket using t
 
 1. Use \`search_products\` with \`query\` (and \`limit\` when useful). Treat results as candidates: match size, brand, dietary constraints and intended use before choosing. Keep \`productId\` as a string, including leading zeros.
 2. Use \`get_product\` when price, availability or sale rules matter. Quantities are in the returned sale unit. Respect minimum, maximum and step; never assume a weighted product is sold by the kilogram and never silently round a requested amount.
-3. Before changing the basket, read \`get_cart\` for current quantities and line identities. If several lines share a product ID, use the intended line's \`cartItemId\`, or ask the user which line they mean.
+3. Before changing the basket, read \`get_cart\` for current quantities and line identities. If several lines share a product ID, use the intended line's \`cartItemId\`, or ask the user which line they mean. For a list, call \`preview_basket\` with the totals you plan: it shows what each line would change, what would be refused and the estimated cost, without changing anything. Show that to the user before applying it.
 4. Show unresolved choices. Missing prices, availability, quantities or sale rules stay unknown. Money is EUR in integer \`minorUnits\` (129 means €1.29). Keep product prices, basket totals and estimated list costs distinct. The amount to pay is \`get_cart\`'s \`totals.grandTotal\`, which includes the bags the website adds.
 
 Searches read a bounded number of result pages; respect \`completeness\` and \`failures\` and do not claim a search was exhaustive.
@@ -52,6 +52,7 @@ For exact schemas and limits, see the [tool reference](https://github.com/andred
 export const SERVER_INSTRUCTIONS = `Continente MCP shops at Continente.pt for one account. Checkout and payment always happen on the website.
 
 - Quantities are in the product's sale unit. Call get_product before choosing a quantity for weighted or bulk products, and respect its minimum, maximum and step.
+- Before applying a list, preview_basket shows what each change would do and cost, and what would be refused; it changes nothing.
 - set_cart_item_quantity sets an exact total (adding the product if needed; 0 removes it). add_cart_item adds on top of what is already there. When the user says how many they need, use set_cart_item_quantity.
 - Change the cart one item at a time and read structuredContent.result before reporting success. confirmedQuantity is what the cart now holds.
 - If a cart change returns mutation.outcome "unknown", the cart may have changed. Call get_cart and decide from its contents. Never repeat the change automatically.

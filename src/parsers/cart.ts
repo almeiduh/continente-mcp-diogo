@@ -186,7 +186,7 @@ function milliquantity(value: number): Result<number, ToolError> {
   return Number.isSafeInteger(integer) && Math.abs(scaled - integer) <= 0.000001
     ? success(integer) : failure('invalid_input', 'Quantity exceeds supported three-decimal storefront precision');
 }
-export function validateSaleQuantity(value: number, metadata: SaleMetadata): Result<Quantity, ToolError> {
+export function validateSaleQuantity(value: number, metadata: Pick<SaleMetadata, 'rules'>): Result<Quantity, ToolError> {
   const { saleUnit: unit, minimum, maximum, step } = metadata.rules;
   const display = (value: number) => Number(value.toPrecision(12));
   const constraints = [minimum && `minimum ${display(minimum.value)} ${unit}`, maximum && `maximum ${display(maximum.value)} ${unit}`, step && `step ${display(step.value)} ${unit}`].filter(Boolean).join(', ');

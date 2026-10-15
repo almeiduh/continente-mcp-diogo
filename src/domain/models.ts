@@ -131,3 +131,37 @@ export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   ]),
 });
 export type ProductDetails = z.infer<typeof ProductDetailsSchema>;
+
+/** One requested line of a basket preview: what the cart holds, what would change and what it would cost. */
+export const BasketPreviewLineSchema = z.strictObject({
+  productId: ProductIdSchema,
+  cartItemId: CartItemIdSchema.nullable(),
+  name: z.string().nullable(),
+  /** The desired total, in the product's sale unit; null when the sale unit is unknown. */
+  requested: QuantitySchema.nullable(),
+  /** What the cart holds now; zero when the product is not in it. */
+  current: ObservedQuantitySchema,
+  /** What `set_cart_item_quantity` would do; null when it would be refused. */
+  change: z.enum(['add', 'increase', 'decrease', 'remove', 'none']).nullable(),
+  availability: z.enum(['available', 'unavailable', 'unknown']).nullable(),
+  price: PriceTagSchema.nullable(),
+  packageText: z.string().nullable(),
+  package: PackageSchema.nullable(),
+  saleRules: ProductSaleRulesSchema.nullable(),
+  /** Cost of the desired total at the current price; null when it cannot be worked out. */
+  estimatedCost: MoneySchema.nullable(),
+  /** The cost depends on the weight picked, for products sold by the piece but priced by weight. */
+  estimated: z.boolean(),
+  /** Why the line cannot be applied as asked, such as a quantity below the minimum. */
+  error: ToolErrorSchema.nullable(),
+});
+export type BasketPreviewLine = z.infer<typeof BasketPreviewLineSchema>;
+export const BasketPreviewSchema = z.strictObject({
+  lines: z.array(BasketPreviewLineSchema),
+  /** Sum of the lines' estimated costs; null when any line's cost is unknown. */
+  estimatedCost: MoneySchema.nullable(),
+  estimated: z.boolean(),
+  /** Lines with an error or a product that is not available. */
+  problems: z.number().int().nonnegative(),
+});
+export type BasketPreview = z.infer<typeof BasketPreviewSchema>;
