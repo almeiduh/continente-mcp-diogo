@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-15
+
 ### Fixed
 
 - The first request after the browser started could fail with "The order history page was not recognised", or a search error, while the website was still setting up its session. A page that does not show what it should is now loaded once more.
@@ -95,7 +97,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/andredelgado/continente-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/andredelgado/continente-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/andredelgado/continente-mcp/compare/v0.3.1...v0.4.0
