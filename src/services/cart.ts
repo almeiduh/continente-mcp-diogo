@@ -3,7 +3,7 @@ import type { CartGateway, MutationResult } from '../ports.js';
 import type { Cart, CartMutationResult, ProductId, Quantity, Result, ToolError } from '../domain/index.js';
 import { parseProductReference, CartItemIdSchema } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
-import { parseCartResponse, parseProductForm, parseCartControls, parseSaleRules, validateSaleQuantity,
+import { parseCartResponse, parseProductForm, parseCartControls, parseSaleRules, validateSaleQuantity, weightedLineQuantity,
   toStorefrontQuantity, observedCartQuantity, selectCartItem, parseMutationReceipt } from '../parsers/cart.js';
 import { storefrontUrl } from '../parsers/catalog.js';
 import { field } from '../parsers/records.js';
@@ -20,7 +20,18 @@ export class CartService {
     const authenticated = field(response.value, 'resources', 'customerAuthenticated');
     if (authenticated === false) return failure('not_authenticated');
     if (authenticated !== true) return failure('invalid_data', 'The cart response did not state whether you are signed in');
-    return parseCartResponse(response.value);
+    const cart = parseCartResponse(response.value);
+    if (!cart.ok) return cart;
+    // Weighted lines whose JSON does not count pieces are read from the cart page; they stay unknown if it cannot say.
+    const missing = cart.value.items.filter(item => item.estimated && item.quantity.status === 'unknown' && item.quantity.reason === 'missing');
+    if (!missing.length) return cart;
+    const page = await requestIO(() => this.client.fetchCartControls());
+    if (!page.ok) return cart;
+    return success({ ...cart.value, items: cart.value.items.map(item => {
+      if (!missing.includes(item)) return item;
+      const quantity = weightedLineQuantity(page.value, item.productId, item.cartItemId);
+      return quantity ? { ...item, quantity: { status: 'known' as const, quantity } } : item;
+    }) });
   }
   private unknown(productId: ProductId, requested: Quantity, error: ToolError): MutationResult {
     return success({ outcome: 'unknown', productId, requested, error: { ...error, retryable: false },

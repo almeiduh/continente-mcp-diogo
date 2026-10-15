@@ -160,7 +160,10 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   for everything else.
 - `quantity` is in the line's sale unit, read from the line's own sale rules: pieces (`un`) for
   products sold by the piece but priced per kg, `un` for everything else. A line without
-  recognisable sale rules keeps its amount with an unknown unit.
+  recognisable sale rules keeps its amount with an unknown unit. For some weighted products the
+  cart's JSON does not count pieces, so the server reads the kilograms in the cart from the cart
+  page and divides them by the weight of one piece; when that is not a whole number, the quantity
+  stays unknown.
 - `price` is the unit price with what it is for: per item, or per kg for products sold by the
   piece (2 apples at €2.99/kg cost less than €5.98). `null` when the line does not say what its
   price is for. `lineTotal` is the line's total as the website reports it.

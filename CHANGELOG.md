@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Some products sold by the piece but priced per kg, such as onions, were shown in the cart with the wrong number of pieces: 4 onions read as 1, so setting them to 4 always ended with an unknown outcome. For these products the cart's JSON does not count pieces; the quantity is now read from the kilograms on the cart page, and stays unknown when that is not a whole number of pieces.
+
 ### Changed
 
 - **Breaking:** `search_products` keeps the website's relevance order. Saved favorites are still marked `favorite: true`, but only move to the top with the new `favoritesFirst: true`, and then only within the returned products.

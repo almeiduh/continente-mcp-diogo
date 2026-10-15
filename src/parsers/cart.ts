@@ -23,21 +23,32 @@ function cartLines(input: unknown): unknown[] | null {
   return field(input, 'action') === 'Cart-MiniCartShow' && basket && Object.keys(basket).length === 0 ? [] : null;
 }
 
-interface LineUnits { quantity: QuantityUnit | null; price: PriceTag['per'] | null }
+interface LineUnits {
+  quantity: QuantityUnit | null; price: PriceTag['per'] | null;
+  /** Sold by the piece but priced by weight. */
+  weighted: boolean;
+  /** `secondaryQuantity` counts pieces only when the line has its own conversion rate. */
+  countsPieces: boolean;
+}
 const PRICE_PER: Partial<Record<string, PriceTag['per']>> = { kg: 'kg', l: 'l', lt: 'l' };
 /**
  * A line's units, from its own sale rules. Products sold by the piece but priced per kg count pieces
  * and quote a price per kg; everything else counts and prices units. The line's `selectedunit` and
- * `selectedDimension` do not follow the quantity, so they are not used.
+ * `selectedDimension` do not follow the quantity, so they are not used. A weighted line without its
+ * own `unitConversionRate` reports a `secondaryQuantity` that is not the number of pieces in the
+ * cart (1 for 4 onions of 0.29 kg), so its amount is read from the cart page instead.
  */
 function lineUnits(line: unknown): LineUnits | undefined {
   const rates = record(field(line, 'measurementInfo', 'quantityConversionRates'));
   if (!rates) return undefined;
   if (rates.hasAlternativeSaleUnit !== true && rates.hasConversionRate !== true) {
-    return rates.primaryunit === 'un' ? { quantity: 'un', price: 'item' } : { quantity: null, price: null };
+    return rates.primaryunit === 'un' ? { quantity: 'un', price: 'item', weighted: false, countsPieces: true } : { quantity: null, price: null, weighted: false, countsPieces: false };
   }
   const unit = QuantityUnitSchema.safeParse(rates.secondaryunit);
-  return { quantity: unit.success ? unit.data : null, price: PRICE_PER[String(rates.primaryunit)] ?? null };
+  const price = PRICE_PER[String(rates.primaryunit)] ?? null;
+  const rate = rates.unitConversionRate;
+  return { quantity: unit.success ? unit.data : null, price, weighted: unit.success && unit.data === 'un' && price !== null,
+    countsPieces: typeof rate === 'number' && rate > 0 };
 }
 
 function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolError> {
@@ -53,11 +64,12 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
     cartItemId: field(line, 'UUID') ?? field(line, 'uuid') ?? null,
     name: field(line, 'productName'),
     kind: bag !== null && reference.value.productId === bag ? 'bag' : 'product',
-    quantity: units?.quantity ? { status: 'known', quantity: { value: rawQuantity, unit: units.quantity } }
-      : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
+    quantity: units?.quantity && units.countsPieces ? { status: 'known', quantity: { value: rawQuantity, unit: units.quantity } }
+      : units?.quantity ? { status: 'unknown', value: null, rawText: null, reason: 'missing' }
+        : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
     price: unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null,
     lineTotal: lineTotal.value,
-    estimated: units?.quantity === 'un' && (units.price === 'kg' || units.price === 'l'),
+    estimated: units?.weighted ?? false,
   }, 'cart line');
 }
 
@@ -258,7 +270,22 @@ export function parseCartControls(html: string, productId: ProductId, cartItemId
     action: update.attr('data-action') ?? null, uuid: update.attr('data-uuid') ?? item.attr('data-uuid') ?? null,
     removeAction: remove.attr('data-action') ?? null, removeUuid: remove.attr('data-uuid') ?? item.attr('data-uuid') ?? null,
     measureOptions: update.attr('data-measure-options') ?? '{}', gtmIndex: item.attr('data-idx') || '1',
+    /** The amount in the cart in storefront units (kg for weighted products), as the page's control holds it. */
+    previousValue: update.attr('data-previous-val') ?? null,
   });
+}
+/**
+ * Pieces in a weighted cart line, from the cart page: its quantity control holds the kilograms in
+ * the cart (`data-previous-val`), which divide into whole pieces of the product's weight. Null
+ * unless that division is exact.
+ */
+export function weightedLineQuantity(html: string, productId: ProductId, cartItemId: string | null): Quantity | null {
+  const controls = parseCartControls(html, productId, cartItemId ?? undefined);
+  if (!controls.ok || controls.value.previousValue === null || !/^\d+(?:\.\d+)?$/.test(controls.value.previousValue)) return null;
+  const sale = parseSaleRules(controls.value.measureOptions);
+  if (!sale.ok || !sale.value.alternativeUnit || sale.value.rules.saleUnit !== 'un') return null;
+  const pieces = Number(controls.value.previousValue) / sale.value.rules.storefrontUnitsPerSaleUnit;
+  return Number.isFinite(pieces) && Math.abs(pieces - Math.round(pieces)) < 1e-6 ? { value: Math.round(pieces), unit: 'un' } : null;
 }
 export function parseMutationReceipt(input: unknown): Result<void, ToolError> {
   if (!record(input) || field(input, 'error') || field(input, 'success') === false ||

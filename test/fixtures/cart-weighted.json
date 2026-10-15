@@ -1,0 +1,17 @@
+{
+  "action": "Cart-MiniCartShow",
+  "resources": { "customerAuthenticated": true },
+  "basket": {
+    "resources": { "plasticBagID": "9999999" },
+    "itemsSortedByBrand": [{ "items": [
+      { "id": "5063153", "UUID": "line-onion", "productName": "Cebola Nova Continente", "secondaryQuantity": 1, "selectedDimension": "un",
+        "measurementNote": "Quant. Mínima = 870 gr (3 un)",
+        "measurementInfo": { "quantityConversionRates": { "hasConversionRate": true, "hasAlternativeSaleUnit": true, "primaryToSecondary": 0.29,
+          "secondaryToPrimary": 0, "unitConversionRate": null, "minOrderQuantity": 0.87, "stepQuantity": 0.29, "primaryunit": "kg",
+          "secondaryunit": "un", "selectedunit": "primary", "maxNumberOfUnitsPerSale": 19.72 } },
+        "pricePerUnit": { "primaryPrice": { "price": { "value": 1.69 }, "unit": "kg" }, "secondaryPrice": { "price": "0,68€", "unit": "un", "value": "0.68" } },
+        "price": { "sales": { "value": 1.69 } }, "priceTotal": { "value": 1.96, "basePriceValue": 1.69, "nonAdjustedPriceValue": 1.96 } }
+    ] }],
+    "totals": { "productsTotalPriceOnly": 1.96, "productsTotalPriceOnlyWithSDR": 1.96, "totalShippingCostNumber": 0, "grandTotalNumber": 1.96 }
+  }
+}

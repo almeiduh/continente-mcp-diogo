@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ProductIdSchema } from '../src/domain/index.js';
-import { parseCartResponse } from '../src/parsers/cart.js';
+import { parseCartResponse, weightedLineQuantity } from '../src/parsers/cart.js';
 import { CartService } from '../src/services/cart.js';
 import { createShoppingApplication } from '../src/runtime.js';
 import { ok, present, valueOf } from '../test-support/helpers.js';
@@ -82,4 +82,41 @@ test('a cart line in another unit does not confirm a change', async () => {
   const pieces = valueOf(await new CartService({ async fetchCart() { return ok(line({ primaryunit: 'un' })); } } as never)
     .confirmCartItemQuantity(ProductIdSchema.parse('00123'), { value: 2, unit: 'un' }, 2));
   assert.equal(pieces.outcome, 'confirmed');
+});
+
+const weightedCart = () => JSON.parse(readFileSync(new URL('../../test/fixtures/cart-weighted.json', import.meta.url), 'utf8')) as Record<string, any>;
+const weightedPage = () => readFileSync(new URL('../../test/fixtures/cart-page-weighted.html', import.meta.url), 'utf8');
+const onion = ProductIdSchema.parse('5063153');
+
+test('a weighted line without its own conversion rate does not trust secondaryQuantity', () => {
+  // 4 onions of 0.29 kg are 1.16 kg (1,96 € at 1,69 €/kg), but the JSON says 1.
+  const line = present(valueOf(parseCartResponse(weightedCart())).items[0]);
+  assert.deepEqual(line.quantity, { status: 'unknown', value: null, rawText: null, reason: 'missing' });
+  assert.deepEqual([line.price, line.lineTotal, line.estimated], [{ amount: eur(169), per: 'kg' }, eur(196), true]);
+});
+
+test('the cart page holds the kilograms of a weighted line, which count whole pieces', () => {
+  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, 'line-onion'), { value: 4, unit: 'un' });
+  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, null), { value: 4, unit: 'un' });
+  for (const page of [weightedPage().replace('data-previous-val="1.16"', 'data-previous-val="1.1"'), weightedPage().replace('data-previous-val="1.16"', ''),
+    weightedPage().replace('data-previous-val="1.16"', 'data-previous-val="abc"'), weightedPage().replace('"hasConversionRate":true,"hasAlternativeSaleUnit":true', '"hasConversionRate":false,"hasAlternativeSaleUnit":false')]) {
+    assert.equal(weightedLineQuantity(page, onion, 'line-onion'), null);
+  }
+  assert.equal(weightedLineQuantity(weightedPage(), onion, 'another-line'), null);
+});
+
+test('get_cart and change confirmation count weighted pieces from the cart page only when needed', async () => {
+  let pages = 0; let page = weightedPage();
+  const client = { async fetchCart() { return ok(weightedCart()); }, async fetchCartControls() { pages++; return ok(page); } };
+  const service = new CartService(client as never);
+  assert.deepEqual(present(valueOf(await service.getCart()).items[0]).quantity, { status: 'known', quantity: { value: 4, unit: 'un' } });
+  assert.equal(pages, 1);
+  assert.equal(valueOf(await service.confirmCartItemQuantity(onion, { value: 4, unit: 'un' }, 4)).outcome, 'confirmed');
+  assert.equal(valueOf(await service.confirmCartItemQuantity(onion, { value: 3, unit: 'un' }, 3)).outcome, 'unknown');
+  page = page.replace('data-previous-val="1.16"', 'data-previous-val="1.1"');
+  assert.equal(present(valueOf(await service.getCart()).items[0]).quantity.status, 'unknown');
+  const failing = new CartService({ async fetchCart() { return ok(weightedCart()); }, async fetchCartControls() { return { ok: false, error: { code: 'upstream_unavailable', message: 'x', retryable: true } }; } } as never);
+  assert.equal(present(valueOf(await failing.getCart()).items[0]).quantity.status, 'unknown');
+  const counted = new CartService({ async fetchCart() { return ok(minicart()); }, async fetchCartControls() { pages++; return ok(''); } } as never);
+  const before = pages; await counted.getCart(); assert.equal(pages, before);
 });
