@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-15
+
 ### Changed
 
 - **Breaking:** `get_cart` returns `totals` instead of `total`: `products`, `bags`, `deposit`, `delivery`, `discounts` and `grandTotal`, the amount to pay. The old `total` left out the bags, so it was less than the amount to pay.
@@ -86,7 +88,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/andredelgado/continente-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/andredelgado/continente-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/andredelgado/continente-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/andredelgado/continente-mcp/compare/v0.3.0...v0.3.1
