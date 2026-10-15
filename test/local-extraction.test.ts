@@ -1,6 +1,6 @@
-import { ProductIdSchema, ProductDetailsSchema } from '../src/domain/index.js';
+import { ProductIdSchema } from '../src/domain/index.js';
 import { present, fixture, rawCart, cartControls } from '../test-support/helpers.js';
-import { SearchData, OrdersData, FrequencyData } from '../src/mcp/contracts.js';
+import { SearchData, OrdersData, FrequencyData, ProductDetailsData } from '../src/mcp/contracts.js';
 import { statusOf, dataOf, mutationOf } from '../test-support/assertions.js';
 import { localStorefront } from '../test-support/local-storefront.js';
 import { connect } from '../test-support/mcp-fixture.js';
@@ -37,7 +37,7 @@ test('storefront clients extract real DOM through local Chromium and preserve re
     const result = await call('search_products', { query: 'leite', limit: 3 }); assert.equal(result.isError, undefined, JSON.stringify(result)); assert.equal(present(dataOf(result, SearchData).products[0]).favorite, true);
   });
   await t.test('product inspection and dynamic quantity form run in Chromium, with step and maximum rejecting before writes', async () => {
-    assert.equal(dataOf((await call('get_product', { productId: ProductIdSchema.parse('00123') })), ProductDetailsSchema).saleRules.status, 'available');
+    assert.equal(dataOf((await call('get_product', { productId: ProductIdSchema.parse('00123') })), ProductDetailsData).saleRules.status, 'available');
     for (const amount of [1.5, 11] as const) assert.equal((await call('add_cart_item', { productId: ProductIdSchema.parse('00123'), quantity: amount })).isError, true);
     assert.equal(state.writes, 0);
   });

@@ -1,6 +1,6 @@
 import { requestIO, requestTimeout, checkRequest, RequestStopped, reportProgress } from '../session/request.js';
 import { BrowserUnavailable } from '../session/chromium.js';
-import type { CatalogGateway, FavoritesGateway, CartGateway, OrdersGateway, PreparedCartMutation, RetrievedPages } from '../ports.js';
+import type { CatalogGateway, FavoritesGateway, CartGateway, OrdersGateway, PreparedCartMutation, RetrievedPages, SearchResume } from '../ports.js';
 import type { Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parseProductSearchPage, parseSearchPagination, parseFavoritesPageData, STOREFRONT_ORIGIN, storefrontUrl } from '../parsers/catalog.js';
@@ -68,29 +68,49 @@ export class CatalogClient implements CatalogGateway {
     if (!page.ok) return page;
     return page.value.ready ? success({ html: page.value.html, url: page.value.url }) : failure('invalid_data', 'Product detail content is unavailable');
   }
-  async searchProducts(query: string, limit: number): Promise<Result<RetrievedPages, ToolError>> {
-    const first = await this.site.html(`/pesquisa/?q=${encodeURIComponent(query)}`, '.ct-inner-tile-wrap, .search-noresults-wrapper, .search-no-results, [data-search-empty]');
+  /**
+   * Read result pages until `limit` products are collected, at most five pages. `resume` continues
+   * at a position of the full list: from the results grid when its URL is known, otherwise from
+   * the first page, whose earlier results the caller drops.
+   */
+  async searchProducts(query: string, limit: number, resume?: SearchResume): Promise<Result<RetrievedPages, ToolError>> {
+    const from = resume?.start ?? 0;
+    const resumeUrl = resume?.grid ? searchGridUrl(resume.grid, from) : null;
+    const first = resumeUrl ? await readContinuation(this.site, resumeUrl)
+      : await this.site.html(`/pesquisa/?q=${encodeURIComponent(query)}`, '.ct-inner-tile-wrap, .search-noresults-wrapper, .search-no-results, [data-search-empty]');
     if (!first.ok) return first;
-    const pages: string[] = []; const failures: ToolError[] = []; const ids = new Set<string>(); const visited = new Set<string>();
-    let html = first.value; let nextCursor: string | null = null;
+    const pages: string[] = []; const starts: number[] = []; const failures: ToolError[] = []; const ids = new Set<string>(); const visited = new Set<string>();
+    let html = first.value; let start = resumeUrl ? from : 0; let grid = resume?.grid ?? null; let nextCursor: string | null = null;
     for (let index = 0; index < 5; index++) {
-      const parsed = parseProductSearchPage(html);
+      const parsed = parseProductSearchPage(html, start);
       if (!parsed.ok) { if (!pages.length) return parsed; failures.push(parsed.error); break; }
-      const previousCount = ids.size; parsed.value.products.forEach(product => ids.add(product.productId)); pages.push(html);
+      const previousCount = ids.size;
+      parsed.value.products.forEach((product, position) => { if ((parsed.value.positions[position] ?? 0) >= from) ids.add(product.productId); });
+      pages.push(html); starts.push(start);
       reportProgress(pages.length, 5, 'Reading catalogue pages');
       const continuation = parseSearchPagination(html);
       if (!continuation.ok) { failures.push(continuation.error); nextCursor = null; break; }
       nextCursor = continuation.value?.url ?? null;
-      if (!nextCursor || ids.size >= limit) break;
-      if (visited.has(nextCursor) || (index > 0 && ids.size === previousCount)) { failures.push(failure('invalid_data', 'Search pagination did not advance').error); break; }
+      if (continuation.value) grid ??= searchGridBase(continuation.value.url);
+      if (!continuation.value || ids.size >= limit) break;
+      if (visited.has(continuation.value.url) || (index > 0 && ids.size === previousCount)) { failures.push(failure('invalid_data', 'Search pagination did not advance').error); break; }
       if (index === 4) break;
-      visited.add(nextCursor);
-      const response = await readContinuation(this.site, nextCursor);
+      visited.add(continuation.value.url);
+      const response = await readContinuation(this.site, continuation.value.url);
       if (!response.ok) { failures.push(response.error); break; }
-      html = response.value;
+      html = response.value; start = continuation.value.start;
     }
-    return success({ pages, failures, nextCursor, completeness: failures.length ? 'partial' : nextCursor ? 'unknown' : 'complete' });
+    return success({ pages, starts, grid, failures, nextCursor, completeness: failures.length ? 'partial' : nextCursor ? 'unknown' : 'complete' });
   }
+}
+/** The results grid URL without its position, so a search can continue anywhere in the list. */
+export function searchGridBase(url: string): string {
+  const base = new URL(url); base.searchParams.delete('start'); base.searchParams.delete('sz');
+  return base.href;
+}
+export function searchGridUrl(base: string, start: number): string {
+  const url = new URL(base); url.searchParams.set('start', String(start)); url.searchParams.set('sz', '35');
+  return url.href;
 }
 async function readContinuation(site: StorefrontClient, url: string): Promise<Result<string, ToolError>> {
   try {

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const searchPage = (ids: string[], next?: number) => ids.map(id => `<div class="ct-inner-tile-wrap"><a href="/produto/product-${id}.html">Product ${id}</a><span class="pwc-tile--price-primary">1,29 €</span></div>`).join('') +
-  (next ? `<button data-url="/Search-UpdateGrid?start=${next}&amp;sz=2">More</button>` : '');
+  (next ? `<button data-url="/on/demandware.store/Sites-continente-Site/default/Search-UpdateGrid?q=milk&amp;start=${next}&amp;sz=2">More</button>` : '');
 const favoritePage = (ids: string[], expected: string[], next?: number) => `<div class="favorites-list"><div class="favorite-grid" data-pids='${JSON.stringify(expected)}'>` +
   ids.map(id => `<div class="favoriteProductTile"><a href="/produto/product-${id}.html">Product ${id}</a></div>`).join('') + '</div>' +
   (next ? `<a rel="next" href="/conta/lista-produtos/?list=favorites&amp;start=${next}">Next</a>` : '') + '</div>';
@@ -28,10 +28,58 @@ test('search scans enough explicit source pages for the limit regardless of cach
     const source = site(searchPage(['1', '2'], 2), [searchPage(['2', '3'], 4), searchPage(['4', '5'])]);
     const service = new CatalogService(new CatalogClient(double<StorefrontClient>(source)), double<FavoritesService>({ async loadCachedFavorites() { return { favorites: [...favorites] }; } }));
     const result = valueOf((await service.searchProducts('milk', 4)));
-    assert.equal(result.scanned, 5); assert.equal(result.page.items.length, 4); assert.equal(result.page.completeness, 'complete');
-    assert.equal(result.page.nextCursor, null); assert.equal(source.urls.length, 2);
+    assert.equal(result.scanned, 5); assert.deepEqual(result.page.items.map(item => item.productId), ['1', '2', '3', '4']);
+    // Product 5 was read but not returned, so the search is not complete and the cursor resumes at it.
+    assert.equal(result.page.completeness, 'unknown'); assert.equal(source.urls.length, 2);
     assert.equal(present(present(result.page.items[0]).price).amount.minorUnits, 129);
+    const rest = site('', [searchPage(['5'])]);
+    const resumed = valueOf(await new CatalogService(new CatalogClient(double<StorefrontClient>(rest)), double<FavoritesService>({ async loadCachedFavorites() { return null; } }))
+      .searchProducts('milk', 4, { cursor: present(result.page.nextCursor) }));
+    assert.deepEqual(resumed.page.items.map(item => item.productId), ['5']);
+    assert.equal(resumed.page.completeness, 'complete'); assert.equal(resumed.page.nextCursor, null);
+    assert.match(present(rest.urls[0]), /Search-UpdateGrid\?q=milk&start=5&sz=35$/);
   }
+});
+/** A results grid that serves any `start` and `sz`, like the website's Search-UpdateGrid. */
+function grid(ids: string[], pageSize: number) {
+  const slice = (start: number, size: number) => {
+    const end = Math.min(start + size, ids.length);
+    return ids.slice(start, end).map(id => `<div class="ct-inner-tile-wrap"><a href="/produto/product-${id}.html">Product ${id}</a><span class="pwc-tile--price-primary">1,29 €</span></div>`).join('') +
+      (end < ids.length ? `<button data-url="/on/demandware.store/Sites-continente-Site/default/Search-UpdateGrid?q=milk&amp;start=${end}&amp;sz=${size}">More</button>` : '');
+  };
+  const urls: string[] = [];
+  return { urls, async html() { return ok(slice(0, pageSize)); }, async io<T>(_lease: unknown, operation: () => Promise<T>) { return operation(); },
+    session: { async ensureReady() { return { context: { request: { async get(url: string) {
+      urls.push(url); const params = new URL(url).searchParams;
+      return { ok: () => true, status: () => 200, url: () => url, async text() { return slice(Number(params.get('start')), Number(params.get('sz'))); } };
+    } } } }; } } };
+}
+test('a search cursor resumes exactly, only for the same query and only on the results grid', async () => {
+  const favorites = double<FavoritesService>({ async loadCachedFavorites() { return null; } });
+  const service = new CatalogService(new CatalogClient(double<StorefrontClient>(grid(['1', '2', '3', '4', '5', '6', '7'], 3))), favorites);
+  const seen: string[] = []; let cursor: string | undefined;
+  do {
+    const page = valueOf(await service.searchProducts('milk', 2, cursor ? { cursor } : {}));
+    seen.push(...page.page.items.map(item => item.productId)); cursor = page.page.nextCursor ?? undefined;
+  } while (cursor && seen.length < 10);
+  assert.deepEqual(seen, ['1', '2', '3', '4', '5', '6', '7']);
+  // Without a grid URL (one page of results), the first page is read again and earlier results are dropped.
+  const single = new CatalogService(new CatalogClient(double<StorefrontClient>(site(searchPage(['1', '2', '3']), []))), favorites);
+  const first = valueOf(await single.searchProducts('milk', 2));
+  assert.deepEqual(first.page.items.map(item => item.productId), ['1', '2']);
+  const second = valueOf(await single.searchProducts('milk', 2, { cursor: present(first.page.nextCursor) }));
+  assert.deepEqual(second.page.items.map(item => item.productId), ['3']); assert.equal(second.page.nextCursor, null);
+  const valid = present(first.page.nextCursor);
+  const forged = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  for (const cursor of ['not a cursor', forged({ v: 1, q: 'milk', start: -1, grid: null }),
+    forged({ v: 1, q: 'milk', start: 2, grid: 'https://other.invalid/Search-UpdateGrid?q=milk' }),
+    forged({ v: 1, q: 'milk', start: 2, grid: 'https://www.continente.pt/on/demandware.store/Sites-continente-Site/default/Cart-AddProduct?q=milk' }),
+    forged({ v: 1, q: 'milk', start: 2, grid: 'https://www.continente.pt/on/demandware.store/Sites-continente-Site/default/Search-UpdateGrid?q=beer' })]) {
+    const result = await single.searchProducts('milk', 2, { cursor });
+    assert.equal(result.ok ? null : result.error.code, 'invalid_input', cursor);
+  }
+  const other = await single.searchProducts('beer', 2, { cursor: valid });
+  assert.deepEqual(other.ok ? null : [other.error.code, other.error.message], ['invalid_input', 'This cursor belongs to a search for different text']);
 });
 test('search stops at requested limit and returns only a real remaining cursor; later failures retain successful products', async () => {
   const bounded = site(searchPage(['1', '2'], 2), []);
@@ -49,7 +97,7 @@ test('search stops at requested limit and returns only a real remaining cursor; 
   }
 });
 test('search empty recognition ignores recommendations and malformed continuations are never guessed', () => {
-  assert.deepEqual(valueOf(parseProductSearchPage('<div class="search-noresults-wrapper"></div>' + searchPage(['1']))), { products: [], problems: [] });
+  assert.deepEqual(valueOf(parseProductSearchPage('<div class="search-noresults-wrapper"></div>' + searchPage(['1']))), { products: [], positions: [], problems: [] });
   assert.equal(parseProductSearchPage('<main>unrecognized</main>').ok, false);
   for (const action of ['/Search-UpdateGrid?sz=2', '/Search-UpdateGrid?start=2&sz=1.5', '/Search-UpdateGrid?start=2&sz=0',
     '/Cart-RemoveProduct?Search-UpdateGrid&start=2&sz=2', 'https://other.invalid/Search-UpdateGrid?start=2&sz=2'] as const) {

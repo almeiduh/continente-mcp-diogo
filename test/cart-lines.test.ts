@@ -25,10 +25,10 @@ test('cart lines read their unit from their own sale rules, never from the selec
 
 test('cart line prices say what they are for, and line totals come from the website', () => {
   const cart = valueOf(parseCartResponse(minicart()));
-  assert.deepEqual(cart.items.map(item => [item.productId, item.price, item.lineTotal]), [
-    ['8912985', { amount: eur(85), per: 'item' }, eur(255)],
-    ['7303767', { amount: eur(250), per: 'kg' }, eur(150)],
-    ['9999999', { amount: eur(10), per: 'item' }, eur(20)],
+  assert.deepEqual(cart.items.map(item => [item.productId, item.price, item.lineTotal, item.estimated]), [
+    ['8912985', { amount: eur(85), per: 'item' }, eur(255), false],
+    ['7303767', { amount: eur(250), per: 'kg' }, eur(150), true],
+    ['9999999', { amount: eur(10), per: 'item' }, eur(20), false],
   ]);
   const unreadable = minicart();
   unreadable.basket.itemsSortedByBrand[0].items[0].price.sales.value = 'soon';
@@ -47,27 +47,29 @@ test('a line without usable sale rules keeps its amount with an unknown unit and
 
 test('cart totals keep products, bags, deposit, delivery, discounts and the amount to pay apart', () => {
   assert.deepEqual(valueOf(parseCartResponse(minicart())).totals,
-    { products: eur(405), bags: eur(20), deposit: eur(10), delivery: eur(0), discounts: eur(50), grandTotal: eur(385) });
+    { products: eur(405), bags: eur(20), deposit: eur(10), delivery: eur(0), discounts: eur(50), grandTotal: eur(385), estimated: true });
   const unreadable = minicart();
   delete unreadable.basket.resources;
   unreadable.basket.totals = { productsTotalPriceOnly: 4.05, grandTotalNumber: 'soon', totalShippingCostNumber: -1 };
   const cart = valueOf(parseCartResponse(unreadable));
   assert.ok(cart.items.every(item => item.kind === 'product'));
-  assert.deepEqual(cart.totals, { products: eur(405), bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null });
+  assert.deepEqual(cart.totals, { products: eur(405), bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: true });
   assert.deepEqual(valueOf(parseCartResponse({ action: 'Cart-MiniCartShow', resources: { customerAuthenticated: true }, basket: {} })).totals,
-    { products: eur(0), bags: eur(0), deposit: eur(0), delivery: null, discounts: eur(0), grandTotal: eur(0) });
+    { products: eur(0), bags: eur(0), deposit: eur(0), delivery: null, discounts: eur(0), grandTotal: eur(0), estimated: false });
 });
 
 test('get_cart text shows units, marks bags and lists each total', async () => {
   const { services } = injectedServices();
   services.cart.getCart = async () => parseCartResponse(minicart());
+  services.clock = { now: () => new Date('2026-10-15T12:00:00.000Z') };
   const app = createShoppingApplication({ version: 'test', services });
   const result = await app.dispatchToolCall('get_cart', {}, {});
+  assert.equal((result.structuredContent as { result: { data: { observedAt: string } } }).result.data.observedAt, '2026-10-15T12:00:00.000Z');
   const text = (result.content as { text: string }[])[0]?.text ?? '';
   assert.match(text, /Leite Meio Gordo — 3 un × €0\.85, line €2\.55\n/);
-  assert.match(text, /Maçã Pink Lady — 3 un × €2\.50\/kg, line €1\.50\n/);
+  assert.match(text, /Maçã Pink Lady — 3 un × €2\.50\/kg, line about €1\.50\n/);
   assert.match(text, /Saco \(bag\) — 2 un × €0\.10, line €0\.20\n/);
-  assert.match(text, /Products: €4\.05\nBags: €0\.20\nDeposit: €0\.10\nDiscounts: €0\.50\nTotal to pay: €3\.85\n/);
+  assert.match(text, /Products: €4\.05\nBags: €0\.20\nDeposit: €0\.10\nDiscounts: €0\.50\nTotal to pay: about €3\.85\nProducts sold by weight are charged by the weight picked/);
   assert.doesNotMatch(text, /unit unknown|each|Delivery/);
   await app.close();
 });

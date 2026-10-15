@@ -1,18 +1,18 @@
 import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
-import type { SessionService, MutationResult } from '../ports.js';
+import type { Clock, SessionService, MutationResult } from '../ports.js';
 import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
-import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchResult } from '../services/catalog.js';
+import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchOptions, SearchResult } from '../services/catalog.js';
 import type { CartService } from '../services/cart.js';
 import type { OrderService, PurchaseHistoryService, OrderListOptions } from '../services/orders.js';
 
 export interface ShoppingServices {
   catalog: CatalogService; favorites: FavoritesService; cart: CartService; orders: OrderService;
-  history: PurchaseHistoryService; session: SessionService;
+  history: PurchaseHistoryService; session: SessionService; clock?: Clock;
 }
 
 type Status = 'success' | 'empty' | 'partial';
@@ -115,6 +115,7 @@ function mutationText(value: Extract<CartMutationResult, { outcome: 'confirmed' 
 
 export class ShoppingHandlers {
   constructor(private readonly services: ShoppingServices, private readonly update: UpdateStatus) {}
+  private observedAt() { return (this.services.clock?.now() ?? new Date()).toISOString(); }
   /** An error result; sign-in failures before any cart write get guidance for fixing them. */
   private async failed(error: ToolError, mutation?: MutationSummary): Promise<CallToolResult> {
     if (error.code !== 'not_authenticated' || mutation?.outcome === 'unknown') return errorResult(error, mutation);
@@ -126,17 +127,19 @@ export class ShoppingHandlers {
     return withAuthenticationRecovery(operation, () => this.services.session.refreshAuthentication());
   }
 
-  async searchProducts(query: string, limit: number): Promise<CallToolResult> {
-    const result = await this.services.catalog.searchProducts(query, limit);
+  async searchProducts(query: string, limit: number, options: SearchOptions = {}): Promise<CallToolResult> {
+    const result = await this.services.catalog.searchProducts(query, limit, options);
     if (!result.ok) return this.failed(result.error);
     const { page, scanned, favorites } = result.value;
     const partial = page.completeness === 'partial';
     const text = page.items.length
       ? `${page.items.length} of ${scanned} scanned products for "${query}":\n\n${formatProductSearchResults(page.items)}`
       : `No products found for "${query}".`;
-    return response({ products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length, completeness: page.completeness,
-      failures: page.failures, nextCursor: page.nextCursor },
-    text + (partial ? `\n\nPartial results: ${page.failures.length} problem(s) reading results; see failures.` : ''), partial ? 'partial' : page.items.length ? 'success' : 'empty');
+    return response({ observedAt: this.observedAt(), products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length,
+      completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor },
+    text + (partial ? `\n\nPartial results: ${page.failures.length} problem(s) reading results; see failures.` : '') +
+      (page.nextCursor ? `\n\nMore results are available. Pass cursor "${page.nextCursor}" with the same query to continue.` : ''),
+    partial ? 'partial' : page.items.length ? 'success' : 'empty');
   }
 
   async getProduct(reference: string): Promise<CallToolResult> {
@@ -144,7 +147,7 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error);
     const product = result.value;
     const partial = product.saleRules.status === 'unavailable' || product.price === null || product.availability === 'unknown';
-    return response(product, formatProduct(product), partial ? 'partial' : 'success');
+    return response({ ...product, observedAt: this.observedAt() }, formatProduct(product), partial ? 'partial' : 'success');
   }
 
   async listFavorites(refresh: boolean): Promise<CallToolResult> {
@@ -161,17 +164,18 @@ export class ShoppingHandlers {
   async getCart(): Promise<CallToolResult> {
     const result = await this.recover(() => this.services.cart.getCart());
     if (!result.ok) return this.failed(result.error);
-    const cart = result.value;
+    const cart = { ...result.value, observedAt: this.observedAt() };
     if (!cart.items.length) return response(cart, 'The cart is empty.', 'empty');
     const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)} × ${priced(item.price)}` +
-      `${item.lineTotal ? `, line ${euros(item.lineTotal)}` : ''}` +
+      `${item.lineTotal ? `, line ${item.estimated ? 'about ' : ''}${euros(item.lineTotal)}` : ''}` +
       `\n   productId: ${item.productId}${item.cartItemId ? `, cartItemId: ${item.cartItemId}` : ''}`));
     const { totals } = cart;
     const optional = ([['Deposit', totals.deposit], ['Delivery', totals.delivery], ['Discounts', totals.discounts]] as const)
       .filter(([, value]) => value !== null && value.minorUnits > 0).map(([label, value]) => `${label}: ${euros(value)}`);
     const summary = [`Products: ${totals.products === null ? 'unavailable' : euros(totals.products)}`,
       ...(totals.bags !== null && totals.bags.minorUnits > 0 ? [`Bags: ${euros(totals.bags)}`] : []), ...optional,
-      `Total to pay: ${totals.grandTotal === null ? 'unavailable' : euros(totals.grandTotal)}`].join('\n');
+      `Total to pay: ${totals.grandTotal === null ? 'unavailable' : `${totals.estimated ? 'about ' : ''}${euros(totals.grandTotal)}`}`,
+      ...(totals.estimated ? ['Products sold by weight are charged by the weight picked, so the final amount can differ.'] : [])].join('\n');
     return response(cart, `Cart (${cart.items.length} lines):\n\n${list}\n\n${summary}\nCheckout happens on the website: ${CHECKOUT_URL}`);
   }
 
@@ -263,11 +267,12 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
   }
   return [
     tool('search_products', 'Search products',
-      'Search the Continente.pt catalogue. No login needed. Results keep the website\'s relevance order, with products from your saved favorites first, and show ' +
-      'each price with what it is for (per item, piece, kg or litre), the pack size and productId. Reads at most five result pages, so completeness may be "unknown" for broad queries.',
-      contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit)),
+      'Search the Continente.pt catalogue. No login needed. Results keep the website\'s relevance order and mark saved favorites; pass favoritesFirst to move them to the top. ' +
+      'Each shows its price with what it is for (per item, piece, kg or litre), the pack size and productId. Pass nextCursor back as cursor, with the same query, for the next products.',
+      contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit, { ...(args.cursor ? { cursor: args.cursor } : {}), favoritesFirst: args.favoritesFirst })),
     tool('get_product', 'Get product',
       'Get one product by productId: price, pack size, availability and sale rules (sale unit, minimum, maximum and step). ' +
+      'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
     tool('list_favorites', 'List favorites',

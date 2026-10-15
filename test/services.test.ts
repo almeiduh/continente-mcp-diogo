@@ -147,10 +147,16 @@ test('catalogue passes requested limit independently of favorites, ranks and ded
   const favorite = { productId: ProductIdSchema.parse('456'), productSlug: 'banana-456', name: 'Banana Madeira', price: null, url: 'https://www.continente.pt/produto/banana-456.html' };
   const favorites = { async loadCachedFavorites() { return { favorites: [favorite] }; } };
   const client: CatalogGateway = { async searchProducts(query, pages) { assert.equal(query, 'fruit'); extra = pages; return ok({ pages: [fixture('catalog'), fixture('catalog')], failures: [fail().error] }); } };
-  const result = await new CatalogService(client, double<FavoritesService>(favorites)).searchProducts('fruit', 1);
+  const service = new CatalogService(client, double<FavoritesService>(favorites));
+  const result = await service.searchProducts('fruit', 1);
   assert.equal(extra, 1); assert.equal(valueOf(result).scanned, 3);
-  assert.equal(present(valueOf(result).page.items[0]).productId, '456');
+  // The website's relevance order by default; favorites are marked, not moved.
+  assert.deepEqual(valueOf(result).page.items.map(item => [item.productId, item.favorite]), [['00123', false]]);
   assert.equal(valueOf(result).page.completeness, 'partial');
+  const relevance = valueOf(await service.searchProducts('fruit', 3));
+  assert.deepEqual(relevance.page.items.map(item => [item.productId, item.favorite]), [['00123', false], ['456', true], ['789', false]]);
+  const first = valueOf(await service.searchProducts('fruit', 3, { favoritesFirst: true }));
+  assert.deepEqual(first.page.items.map(item => item.productId), ['456', '00123', '789']);
 });
 test('order detail failures retain other orders and unrecognized history avoids detail requests', async () => {
   let requests = 0;

@@ -6,7 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `search_products` keeps the website's relevance order. Saved favorites are still marked `favorite: true`, but only move to the top with the new `favoritesFirst: true`, and then only within the returned products.
+
 ### Added
+
+- `search_products` accepts `cursor`: pass `nextCursor` back with the same query to continue right after the last product returned. Following cursors never skips or repeats a result. Before, products read beyond `limit` were dropped and `nextCursor` could not be used.
+- `search_products`, `get_product` and `get_cart` return `observedAt`, when the website was read.
+- Cart lines and totals have `estimated`: products sold by the piece but priced by weight are charged by the weight picked, so their line total, and then the cart totals, are estimates. `get_cart` text says "about" for them.
 
 - `search_products` and `get_product` return `package`, the pack label read into numbers: `count`, `each`, `net` (including any free extra), `drained` and `approximate`. For example, `6 x 1 lt` is 6 items of 1 l, 6 l in total. A label with an unknown part gives `null`.
 - `get_product` returns `packageText` and `minimumText`, like `search_products`, and shows the pack size in its text.

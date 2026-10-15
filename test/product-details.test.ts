@@ -1,6 +1,7 @@
 import { having, double, dataOf } from '../test-support/assertions.js';
 import type { FavoritesService } from '../src/services/catalog.js';
-import { ProductIdSchema, ProductDetailsSchema } from '../src/domain/index.js';
+import { ProductIdSchema } from '../src/domain/index.js';
+import { ProductDetailsData } from '../src/mcp/contracts.js';
 import { present, valueOf, errorOf, fixture, fail } from '../test-support/helpers.js';
 import { parseProductDetails } from '../src/parsers/product.js';
 import { injectedServices, connect } from '../test-support/mcp-fixture.js';
@@ -32,7 +33,7 @@ test('product detail fails closed on changed identity and never invents missing 
 test('get_product is read-only, validates input before I/O and preserves not-found errors', async t => {
   const { services, state } = injectedServices(); const { client } = await connect(t, services);
   const result = await client.callTool({ name: 'get_product', arguments: { productId: '00123' } });
-  assert.equal(dataOf(result, ProductDetailsSchema).productId, '00123'); assert.equal(state.writes, 0); assert.equal(state.refreshes, 0);
+  assert.equal(dataOf(result, ProductDetailsData).productId, '00123'); assert.equal(state.writes, 0); assert.equal(state.refreshes, 0);
   await assert.rejects(client.callTool({ name: 'get_product', arguments: { productId: '../bad' } })); assert.equal(state.reads, 1);
   assert.equal(present(present((await client.listTools()).tools.find(tool => tool.name === 'get_product')).annotations).readOnlyHint, true);
   const service = new CatalogService({ async searchProducts() { throw new Error('Unexpected search'); }, async fetchProductDetails() { return fail('not_found'); } }, double<FavoritesService>({}));

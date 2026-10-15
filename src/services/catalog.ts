@@ -1,10 +1,11 @@
 import { requestIO, RequestStopped } from '../session/request.js';
-import type { Clock, FavoritesGateway, FavoritesStore, CatalogGateway, Logger } from '../ports.js';
+import { z } from 'zod';
+import type { Clock, FavoritesGateway, FavoritesStore, CatalogGateway, Logger, SearchResume } from '../ports.js';
 import type { FavoritesCache, FavoritesStatus, PageResult, Product, Result, ToolError } from '../domain/index.js';
 import { parseProductReference } from '../domain/index.js';
 import { parseProductDetails } from '../parsers/product.js';
 import { success, failure } from '../domain/index.js';
-import { parseFavoritesPages, parseProductSearchPage, rankProductsByFavorites, uniqueProducts } from '../parsers/catalog.js';
+import { parseFavoritesPages, parseProductSearchPage, rankProductsByFavorites, storefrontUrl } from '../parsers/catalog.js';
 import type { RankedProduct } from '../parsers/catalog.js';
 
 export const FAVORITES_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -60,6 +61,31 @@ export interface SearchResult {
   scanned: number;
   favorites: FavoritesCache['favorites'];
 }
+export interface SearchOptions {
+  /** `nextCursor` from an earlier search for the same query. */
+  cursor?: string;
+  /** Move products from the saved favorites to the top of the returned products. */
+  favoritesFirst?: boolean;
+}
+
+const SearchCursorSchema = z.strictObject({ v: z.literal(1), q: z.string(), start: z.number().int().nonnegative().max(100000), grid: z.string().nullable() });
+/** An opaque cursor for the result after the last one returned. */
+export function encodeSearchCursor(query: string, resume: SearchResume): string {
+  return Buffer.from(JSON.stringify({ v: 1, q: query, start: resume.start, grid: resume.grid })).toString('base64url');
+}
+/** A cursor from `encodeSearchCursor`, only for the same query and only pointing at the website's results grid. */
+export function decodeSearchCursor(cursor: string, query: string): Result<SearchResume, ToolError> {
+  let raw: unknown;
+  try { raw = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')); } catch { return failure('invalid_input', 'Invalid search cursor'); }
+  const parsed = SearchCursorSchema.safeParse(raw);
+  if (!parsed.success) return failure('invalid_input', 'Invalid search cursor');
+  if (parsed.data.q !== query) return failure('invalid_input', 'This cursor belongs to a search for different text');
+  const grid = parsed.data.grid === null ? null : storefrontUrl(parsed.data.grid);
+  if (parsed.data.grid !== null && (!grid || !new URL(grid).pathname.endsWith('/Search-UpdateGrid') || new URL(grid).searchParams.get('q') !== query)) {
+    return failure('invalid_input', 'Invalid search cursor');
+  }
+  return success({ start: parsed.data.start, grid });
+}
 export class CatalogService {
   constructor(private readonly client: CatalogGateway, private readonly favorites: FavoritesService) {}
   async getProduct(reference: string) {
@@ -69,27 +95,39 @@ export class CatalogService {
     const response = await requestIO(() => this.client.fetchProductDetails!(reference));
     return response.ok ? parseProductDetails(response.value.html, response.value.url, parsed.value.productId) : response;
   }
-  async searchProducts(query: string, limit: number): Promise<Result<SearchResult, ToolError>> {
+  /**
+   * Products in the website's relevance order, `limit` at a time. `nextCursor` continues right
+   * after the last product returned, so following it never skips or repeats a result.
+   */
+  async searchProducts(query: string, limit: number, options: SearchOptions = {}): Promise<Result<SearchResult, ToolError>> {
+    const resume = options.cursor === undefined ? null : decodeSearchCursor(options.cursor, query);
+    if (resume && !resume.ok) return resume;
+    const from = resume?.value.start ?? 0;
     const cache = await this.favorites.loadCachedFavorites();
     // Not wrapped in requestIO: the gateway handles cancellation per page so read pages survive.
-    const response = await this.client.searchProducts(query, limit);
+    const response = await this.client.searchProducts(query, limit, resume?.value);
     if (!response.ok) return response;
-    const products: Product[] = [];
+    const entries: { product: Product; position: number }[] = [];
     const failures = [...response.value.failures];
-    for (const html of response.value.pages) {
-      const parsed = parseProductSearchPage(html);
+    for (const [index, html] of response.value.pages.entries()) {
+      const parsed = parseProductSearchPage(html, response.value.starts?.[index] ?? 0);
       if (!parsed.ok) {
-        if (!products.length) return parsed;
+        if (!entries.length) return parsed;
         failures.push(parsed.error); break;
       }
-      products.push(...parsed.value.products);
+      parsed.value.products.forEach((product, position) => entries.push({ product, position: parsed.value.positions[position] ?? 0 }));
       failures.push(...parsed.value.problems);
     }
-    const unique = uniqueProducts(products);
+    const seen = new Set<string>();
+    const fresh = entries.filter(({ product, position }) => position >= from && !seen.has(product.productId) && seen.add(product.productId));
+    const taken = fresh.slice(0, limit);
+    const last = taken.at(-1);
+    const more = fresh.length > limit || Boolean(response.value.nextCursor);
+    const nextCursor = more && last ? encodeSearchCursor(query, { start: last.position + 1, grid: response.value.grid ?? null }) : null;
     const favorites = cache?.favorites ?? [];
-    return success({ scanned: unique.length, favorites, page: {
-      items: rankProductsByFavorites(unique, favorites).slice(0, limit), nextCursor: response.value.nextCursor ?? null,
-      completeness: failures.length ? 'partial' : response.value.completeness ?? 'unknown', failures,
+    return success({ scanned: fresh.length, favorites, page: {
+      items: rankProductsByFavorites(taken.map(entry => entry.product), favorites, options.favoritesFirst ?? false), nextCursor,
+      completeness: failures.length ? 'partial' : nextCursor ? 'unknown' : 'complete', failures,
     } });
   }
 }

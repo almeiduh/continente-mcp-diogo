@@ -48,7 +48,7 @@ export function createShoppingServices(options: RuntimeOptions = {}): ShoppingSe
   const site = new StorefrontClient(session);
   const favorites = new FavoritesService(options.favoritesClient ?? new FavoritesClient(site), store, clock, scope, logger);
   const ordersClient = options.ordersClient ?? new OrdersClient(site);
-  return { session, favorites, catalog: new CatalogService(options.catalogClient ?? new CatalogClient(site), favorites),
+  return { session, favorites, clock, catalog: new CatalogService(options.catalogClient ?? new CatalogClient(site), favorites),
     cart: new CartService(options.cartClient ?? new CartClient(site)), orders: new OrderService(ordersClient),
     history: new PurchaseHistoryService(ordersClient) };
 }

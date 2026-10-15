@@ -53,6 +53,8 @@ export const CartItemSchema = z.strictObject({
   price: PriceTagSchema.nullable(),
   /** The line's total as the website reports it. */
   lineTotal: MoneySchema.nullable(),
+  /** The line total is an estimate: products sold by the piece but priced by weight are charged by the weight picked. */
+  estimated: z.boolean(),
 });
 export type CartItem = z.infer<typeof CartItemSchema>;
 /** Each amount as the website reports it, or null when it reports none. */
@@ -68,6 +70,8 @@ export const CartTotalsSchema = z.strictObject({
   discounts: MoneySchema.nullable(),
   /** The amount to pay as the website shows it; it includes the bags. */
   grandTotal: MoneySchema.nullable(),
+  /** Some lines are estimates, so `products` and `grandTotal` are too. */
+  estimated: z.boolean(),
 });
 export type CartTotals = z.infer<typeof CartTotalsSchema>;
 export const CartSchema = z.strictObject({

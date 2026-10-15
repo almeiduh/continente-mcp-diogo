@@ -3,8 +3,8 @@ import { z } from 'zod';
 import type { TestContext } from 'node:test';
 import { InitializeResultSchema, ListToolsResultSchema, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { present } from '../test-support/helpers.js';
-import { FrequencyData, OrdersData } from '../src/mcp/contracts.js';
-import { CartSchema, CartMutationResultSchema } from '../src/domain/index.js';
+import { CartData, FrequencyData, OrdersData } from '../src/mcp/contracts.js';
+import { CartMutationResultSchema } from '../src/domain/index.js';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -64,7 +64,7 @@ test('all tools serialize advertised outputs through real stdio, preserving quan
       ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: '00123' } : tool.name === 'get_order' ? { orderId: 'first' } : {};
     await call(tool.name, args);
   }
-  const empty = await call('get_cart'); assert.deepEqual(dataOf(empty, CartSchema).items, []);
+  const empty = await call('get_cart'); assert.deepEqual(dataOf(empty, CartData).items, []);
   const add = await call('add_cart_item', { productId: '00123', quantity: 2 }); assert.equal(dataOf(add, CartMutationResultSchema.options[0]).confirmedQuantity.value, 2);
   const set = await call('set_cart_item_quantity', { productId: '00123', quantity: 5 }); assert.equal(dataOf(set, CartMutationResultSchema.options[0]).confirmedQuantity.value, 5);
   const before = (await io.metrics()).detailReads;

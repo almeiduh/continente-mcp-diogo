@@ -15,9 +15,17 @@ export interface SessionService {
 }
 export interface CatalogGateway {
   fetchProductDetails?(reference: string): Promise<Result<{ html: string; url: string }, ToolError>>;
-  searchProducts(query: string, limit: number): Promise<Result<RetrievedPages, ToolError>>;
+  searchProducts(query: string, limit: number, resume?: SearchResume): Promise<Result<RetrievedPages, ToolError>>;
 }
-export interface RetrievedPages { pages: string[]; failures: ToolError[]; nextCursor?: string | null; completeness?: 'complete' | 'partial' | 'unknown'; }
+export interface RetrievedPages {
+  pages: string[]; failures: ToolError[]; nextCursor?: string | null; completeness?: 'complete' | 'partial' | 'unknown';
+  /** Search only: the position of each page's first result in the full list. */
+  starts?: number[];
+  /** Search only: the results grid URL without its position, when the website gave one. */
+  grid?: string | null;
+}
+/** Where a search continues: a position in the full result list, read from the grid when known. */
+export interface SearchResume { start: number; grid: string | null; }
 export interface FavoritesGateway { fetchFavorites(): Promise<Result<RetrievedPages, ToolError>>; }
 export type PreparedCartMutation = () => Promise<Result<unknown, ToolError>>;
 export interface CartGateway {

@@ -43,22 +43,27 @@ function priceOrNull(label: string): { price: PriceTag | null; recognised: boole
 
 export interface SearchPage {
   products: Product[];
+  /** Each product's position in the website's full result list, counting from 0. */
+  positions: number[];
   /** One entry per result that was skipped or kept with missing data. */
   problems: ToolError[];
 }
 
-/** Parse one results page. A bad card is reported in `problems` instead of failing the page. */
-export function parseProductSearchPage(html: string): Result<SearchPage, ToolError> {
+/**
+ * Parse one results page whose first result is at position `start` of the full list. A bad card
+ * is reported in `problems` instead of failing the page.
+ */
+export function parseProductSearchPage(html: string, start = 0): Result<SearchPage, ToolError> {
   const $ = load(html);
-  if ($(SEARCH_EMPTY).length) return success({ products: [], problems: [] });
+  if ($(SEARCH_EMPTY).length) return success({ products: [], positions: [], problems: [] });
   const tiles = $($('.search-results-grid').length ? '.search-results-grid .ct-inner-tile-wrap' : '.ct-inner-tile-wrap').toArray();
   if (!tiles.length) return failure('invalid_data', 'The search results page was not recognised');
-  const products: Product[] = [];
+  const entries: { product: Product; position: number }[] = [];
   const problems: ToolError[] = [];
   const problem = (message: string) => problems.push(failure('invalid_data', message).error);
   tiles.forEach((tile, index) => {
     const card = $(tile);
-    const position = `Search result ${index + 1}`;
+    const position = `Search result ${start + index + 1}`;
     const links = card.find(PRODUCT_LINK).toArray().map(link => ({ href: $(link).attr('href'), label: text($(link).text()) }));
     const href = links[0]?.href;
     const name = links.map(link => link.label).find(Boolean);
@@ -73,10 +78,13 @@ export function parseProductSearchPage(html: string): Result<SearchPage, ToolErr
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
       secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
       recommendedPrice: recommended.price }, 'product');
-    if (product.ok) products.push(product.value); else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
+    if (product.ok) entries.push({ product: product.value, position: start + index });
+    else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });
-  if (!products.length && problems.length) return failure('invalid_data', 'No search result on the page could be recognised');
-  return success({ products: uniqueProducts(products), problems });
+  if (!entries.length && problems.length) return failure('invalid_data', 'No search result on the page could be recognised');
+  const seen = new Set<string>();
+  const unique = entries.filter(({ product }) => !seen.has(product.productId) && seen.add(product.productId));
+  return success({ products: unique.map(entry => entry.product), positions: unique.map(entry => entry.position), problems });
 }
 
 export function parseFavoritesPageData(html: string): Result<{ items: FavoriteProduct[]; expectedIds: string[]; nextCursor: string | null }, ToolError> {
@@ -154,10 +162,11 @@ export interface RankedProduct extends Product {
  * favorites to the front. Name similarity to favorites is not used: shared words such as a
  * brand name would pull unrelated products above real matches.
  */
-export function rankProductsByFavorites(products: Product[], favorites: FavoriteProduct[]): RankedProduct[] {
+/** Mark saved favorites; with `favoritesFirst`, move them ahead of the others, keeping each group's order. */
+export function rankProductsByFavorites(products: Product[], favorites: FavoriteProduct[], favoritesFirst = true): RankedProduct[] {
   const favoriteIds = new Set(favorites.map(product => product.productId));
   const ranked = products.map(product => ({ ...product, favorite: favoriteIds.has(product.productId) }));
-  return [...ranked.filter(product => product.favorite), ...ranked.filter(product => !product.favorite)];
+  return favoritesFirst ? [...ranked.filter(product => product.favorite), ...ranked.filter(product => !product.favorite)] : ranked;
 }
 export function parseSearchPagination(html: string): Result<{ url: string; start: number; size: number } | null, ToolError> {
   const actions = load(html)('[data-url*="Search-UpdateGrid"]');

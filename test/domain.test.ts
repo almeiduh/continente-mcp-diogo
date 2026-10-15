@@ -89,10 +89,10 @@ test('cart outcomes prevent contradictory confirmation, failure and automatic re
 
 test('cart models preserve unknown prices and unresolved quantity units', () => {
   const cart = {
-    customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null }, items: [{
+    customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, items: [{
       productId: '00123', cartItemId: null, name: 'Milk', kind: 'product',
       quantity: { status: 'unknown', value: 2, rawText: null },
-      price: null, lineTotal: null,
+      price: null, lineTotal: null, estimated: false,
     }],
   };
   assert.deepEqual(parseJson(CartSchema, JSON.stringify(cart), 'cart'), { ok: true, value: cart });

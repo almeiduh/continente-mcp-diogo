@@ -9,6 +9,8 @@ export const LimitInput = z.number().int().min(1).max(50);
 export const SearchInput = z.strictObject({
   query: z.string().max(MAX_REFERENCE_LENGTH).regex(/^[^\p{Cc}]*[^\p{Cc}\s][^\p{Cc}]*$/u).describe('Search text, for example "leite meio gordo".'),
   limit: LimitInput.default(10).describe('Maximum products to return (default 10).'),
+  cursor: z.string().min(1).max(4096).optional().describe('nextCursor from an earlier search for the same query, to continue right after its last product.'),
+  favoritesFirst: z.boolean().default(false).describe('Move products from your saved favorites to the top of the returned products. Default: the website\'s relevance order.'),
 });
 const cartItemId = CartItemIdSchema.optional().describe('Cart line identifier from get_cart. Required to select one of several lines for the same product.');
 export const AddCartItemInput = z.strictObject({ productId: ProductReferenceInput,
@@ -61,7 +63,9 @@ export function outputSchema<T extends z.ZodType>(data: T, extra: z.ZodRawShape 
   ]), ...extra });
 }
 const integer = z.number().int().nonnegative();
-export const SearchData = z.strictObject({ products: z.array(ProductSchema.safeExtend({ favorite: z.boolean() })),
+/** When the website was read; prices and availability can change after it. */
+const observed = { observedAt: z.iso.datetime({ offset: true }) };
+export const SearchData = z.strictObject({ ...observed, products: z.array(ProductSchema.safeExtend({ favorite: z.boolean() })),
   scanned: integer, returned: integer, favoritesLoaded: integer, completeness: z.enum(['complete', 'partial', 'unknown']),
   failures: z.array(ToolErrorSchema), nextCursor: z.string().nullable() });
 export const FavoritesData = z.strictObject({ favorites: z.array(FavoriteProductSchema), fetchedAt: z.iso.datetime({ offset: true }), completeness: z.enum(['complete', 'unknown']),
@@ -73,7 +77,8 @@ export const FrequencyData = z.strictObject({ products: z.array(PurchaseFrequenc
   unknownQuantityLines: integer, failures: z.array(ScanFailure), completeness: z.enum(['complete', 'partial', 'unknown']), nextCursor: z.string().nullable() });
 export const SearchOutput = outputSchema(SearchData);
 export const FavoritesOutput = outputSchema(FavoritesData);
-export const CartOutput = outputSchema(CartSchema);
+export const CartData = CartSchema.safeExtend(observed);
+export const CartOutput = outputSchema(CartData);
 const ConfirmedMutationData = CartMutationResultSchema.options[0].refine(value => value.requested.unit === value.confirmedQuantity.unit);
 export const MutationOutput = outputSchema(ConfirmedMutationData);
 export const OrdersOutput = outputSchema(OrdersData);
@@ -82,4 +87,5 @@ export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData
 export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ favorites: FavoritesStatusSchema, update: UpdateStatusSchema }));
 
 export const GetProductInput = z.strictObject({ productId: ProductReferenceInput });
-export const ProductDetailsOutput = outputSchema(ProductDetailsSchema);
+export const ProductDetailsData = ProductDetailsSchema.safeExtend(observed);
+export const ProductDetailsOutput = outputSchema(ProductDetailsData);

@@ -1,7 +1,7 @@
 import { validatorSchema, having, double, dataOf, textOf, statusOf, mutationOf, recoveryOf, toolError } from '../test-support/assertions.js';
 import { present, valueOf, errorOf, fixture, rawCart, ordersPage, ok, fail, unitRules } from '../test-support/helpers.js';
-import { FrequencyData, SearchData, CartOutput } from '../src/mcp/contracts.js';
-import { ProductIdSchema, CartSchema, CartMutationResultSchema } from '../src/domain/index.js';
+import { CartData, FrequencyData, SearchData, CartOutput } from '../src/mcp/contracts.js';
+import { ProductIdSchema, CartMutationResultSchema } from '../src/domain/index.js';
 import type { StorefrontSession } from '../src/session/browser.js';
 import { injectedServices, connect } from '../test-support/mcp-fixture.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
@@ -26,8 +26,8 @@ test('shopping tools work through real MCP transport using injected clients', as
   assert.match(textOf((await client.callTool({ name: 'list_favorites' }))), /2 favorites/);
   assert.match(textOf((await client.callTool({ name: 'list_favorites', arguments: { refresh: true } }))), /2 favorites \(fetched from the website\)/);
   const cart = await client.callTool({ name: 'get_cart' });
-  assert.equal(present(dataOf(cart, CartSchema).items[0]).productId, '00123');
-  assert.equal(having(present(dataOf(cart, CartSchema).items[0]).quantity, 'value').value, 2);
+  assert.equal(present(dataOf(cart, CartData).items[0]).productId, '00123');
+  assert.equal(having(present(dataOf(cart, CartData).items[0]).quantity, 'value').value, 2);
   assert.deepEqual(Object.keys(present(cart.structuredContent)), ['result']);
   const add = await client.callTool({ name: 'add_cart_item', arguments: { productId: ProductIdSchema.parse('00123') } });
   assert.equal(statusOf(add), 'success');
@@ -120,7 +120,7 @@ test('empty and partial results agree with text and retain data and failure coun
   services.history.listFrequentlyBoughtProducts = async () => ok({ products: [], listed: 2, scanned: 2, succeeded: 1, failed: 1, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'partial', nextCursor: null });
   const frequency = await client.callTool({ name: 'list_frequently_bought_products' });
   assert.equal(statusOf(frequency), 'partial'); assert.match(textOf(frequency), /1 of 2 orders/);
-  services.cart.getCart = async () => ok({ customerAuthenticated: true, items: [], totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null } });
+  services.cart.getCart = async () => ok({ customerAuthenticated: true, items: [], totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false } });
   const cart = await client.callTool({ name: 'get_cart' });
   assert.equal(statusOf(cart), 'empty'); assert.match(textOf(cart), /cart is empty/);
 });
@@ -171,7 +171,7 @@ test('cart tools preserve incremental, absolute and removal semantics', async t 
   assert.match(textOf(set), /Set the quantity to 2 un/);
   const cart = await client.callTool({ name: 'get_cart' });
   assert.deepEqual(Object.keys(present(cart.structuredContent)), ['result']);
-  assert.equal(having(present(dataOf(cart, CartSchema).items[0]).quantity, 'value').value, 2);
+  assert.equal(having(present(dataOf(cart, CartData).items[0]).quantity, 'value').value, 2);
   const removed = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 0 } });
   assert.equal(dataOf(removed, CartMutationResultSchema.options[0]).confirmedQuantity.value, 0);
   assert.equal(state.quantity, 0); assert.equal(state.writes, 3);

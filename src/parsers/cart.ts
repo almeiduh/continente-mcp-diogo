@@ -57,16 +57,17 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
       : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
     price: unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null,
     lineTotal: lineTotal.value,
+    estimated: units?.quantity === 'un' && (units.price === 'kg' || units.price === 'l'),
   }, 'cart line');
 }
 
 const money = (value: unknown): Money | null => { const parsed = parseMoneyAmount(value); return parsed.ok ? parsed.value : null; };
 const euro = (minorUnits: number): Money => ({ currency: 'EUR', minorUnits });
 /** Mini-cart totals. An amount the website does not report, or reports unreadably, stays null. */
-function cartTotals(input: unknown, lines: unknown[], bag: ProductId | null): CartTotals {
+function cartTotals(input: unknown, lines: unknown[], bag: ProductId | null, estimated: boolean): CartTotals {
   const totals = field(input, 'basket', 'totals');
   if (lines.length === 0 && field(input, 'action') === 'Cart-MiniCartShow' && !record(totals)) {
-    return { products: euro(0), bags: euro(0), deposit: euro(0), delivery: null, discounts: euro(0), grandTotal: euro(0) };
+    return { products: euro(0), bags: euro(0), deposit: euro(0), delivery: null, discounts: euro(0), grandTotal: euro(0), estimated: false };
   }
   const products = money(field(input, 'cart', 'totalProductsValueNumber') ?? field(totals, 'productsTotalPriceOnly'));
   const withDeposit = money(field(totals, 'productsTotalPriceOnlyWithSDR'));
@@ -83,6 +84,7 @@ function cartTotals(input: unknown, lines: unknown[], bag: ProductId | null): Ca
     delivery: money(field(totals, 'totalShippingCostNumber')),
     discounts: discountParts.length ? sum(discountParts) : null,
     grandTotal: money(field(totals, 'grandTotalNumber')),
+    estimated,
   };
 }
 
@@ -100,7 +102,7 @@ export function parseCartResponse(input: unknown): Result<Cart, ToolError> {
   const lineIds = items.map(item => item.cartItemId).filter(id => id !== null);
   if (new Set(lineIds).size !== lineIds.length) return failure('invalid_data', 'The cart contains duplicate line identifiers');
   const customerAuthenticated = field(input, 'resources', 'customerAuthenticated') === true;
-  return success({ customerAuthenticated, items, totals: cartTotals(input, lines, bag) });
+  return success({ customerAuthenticated, items, totals: cartTotals(input, lines, bag, items.some(item => item.estimated)) });
 }
 
 export interface SaleMetadata {

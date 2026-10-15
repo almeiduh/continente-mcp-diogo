@@ -102,8 +102,16 @@ A result the server cannot read does not fail the search. It is skipped, or kept
 unknown price when only the price is unreadable, and described in `failures`; the result is
 then `partial`.
 
-`data`: `products`, `scanned`, `returned`, `favoritesLoaded`, `completeness`, `failures`,
-`nextCursor`.
+`data`: `observedAt`, `products`, `scanned`, `returned`, `favoritesLoaded`, `completeness`,
+`failures`, `nextCursor`.
+
+Results keep the website's relevance order. Products in your saved favorites are marked
+`favorite: true`; pass `favoritesFirst: true` to move them to the top of the returned products.
+
+To see more results, call `search_products` again with the same `query` and `cursor` set to
+`nextCursor`. It continues right after the last product returned, so following cursors never
+skips or repeats a result. `nextCursor` is `null` when there is nothing more, and a cursor
+only works with the query it came from.
 
 ### `get_product`
 
@@ -121,8 +129,10 @@ Cart quantities are always in `saleUnit`. Products priced per kilogram but sold 
 step are whole pieces, and `storefrontUnitsPerSaleUnit` is the approximate weight of one piece.
 If the website's rules cannot be interpreted safely, `saleRules` is
 `{ "status": "unavailable", "error": ... }` and the result is `partial`. Availability reflects
-the product page, not delivery-slot stock. A product the website no longer sells returns
-`not_found`.
+the product page as the server's session sees it, not delivery-slot stock: signed in, the
+website can show a different availability than in the public catalogue, so the same product can
+read `available` signed out and `unavailable` in your account. A product the website no longer
+sells returns `not_found`.
 
 ## Favorites
 
@@ -142,8 +152,8 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
 
 ### `get_cart`
 
-`data`: `customerAuthenticated`, `items` (each with `productId`, `cartItemId`, `name`, `kind`,
-`quantity`, `price`, `lineTotal`) and `totals`.
+`data`: `observedAt`, `customerAuthenticated`, `items` (each with `productId`, `cartItemId`,
+`name`, `kind`, `quantity`, `price`, `lineTotal`, `estimated`) and `totals`.
 
 - `kind` is `bag` for the shopping bags the website adds to the cart by itself, and `product`
   for everything else.
@@ -153,6 +163,9 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
 - `price` is the unit price with what it is for: per item, or per kg for products sold by the
   piece (2 apples at €2.99/kg cost less than €5.98). `null` when the line does not say what its
   price is for. `lineTotal` is the line's total as the website reports it.
+- `estimated` is `true` for products sold by the piece but priced by weight: they are charged by
+  the weight picked, so their `lineTotal` is an estimate. `totals.estimated` is `true` when any
+  line is, and then `products` and `grandTotal` are estimates too.
 - `totals` holds each amount as the website reports it, or `null` when it reports none:
 
   | Field | Meaning |
@@ -163,6 +176,7 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   | `delivery` | Delivery cost, once the website has one |
   | `discounts` | Amount taken off by order and delivery discounts |
   | `grandTotal` | The amount to pay as the website shows it. It includes the bags. |
+  | `estimated` | Some lines are charged by weight, so `products` and `grandTotal` are estimates |
 
   Report `grandTotal` as the amount to pay, and don't add the other fields to it yourself.
 
