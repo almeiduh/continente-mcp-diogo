@@ -1,0 +1,33 @@
+{
+  "action": "Cart-MiniCartShow",
+  "resources": { "customerAuthenticated": true },
+  "basket": {
+    "resources": { "plasticBagID": "9999999" },
+    "itemsSortedByBrand": [
+      { "items": [
+        { "id": "8912985", "UUID": "line-milk", "productName": "Leite Meio Gordo", "secondaryQuantity": 3, "selectedDimension": "lt",
+          "measurementInfo": { "quantityConversionRates": { "primaryunit": "un", "secondaryunit": "lt", "selectedunit": "primary",
+            "unitConversionRate": 0, "minOrderQuantity": 1, "stepQuantity": 1, "maxNumberOfUnitsPerSale": 60,
+            "hasAlternativeSaleUnit": false, "hasConversionRate": false } },
+          "price": { "sales": { "value": 0.85 } }, "priceTotal": { "value": 2.55, "basePriceValue": 2.55 } },
+        { "id": "7303767", "UUID": "line-apple", "productName": "Maçã Pink Lady", "secondaryQuantity": 3, "selectedDimension": "un",
+          "measurementInfo": { "quantityConversionRates": { "primaryunit": "kg", "secondaryunit": "un", "selectedunit": "primary",
+            "unitConversionRate": 0.2, "minOrderQuantity": 0.4, "stepQuantity": 0.2, "maxNumberOfUnitsPerSale": 99,
+            "hasAlternativeSaleUnit": true, "hasConversionRate": true } },
+          "price": { "sales": { "value": 2.5 } }, "priceTotal": { "value": 1.5, "basePriceValue": 1.5 } }
+      ] },
+      { "items": [
+        { "id": "9999999", "UUID": "line-bag", "productName": "Saco", "secondaryQuantity": 2, "selectedDimension": "un",
+          "measurementInfo": { "quantityConversionRates": { "primaryunit": "un", "secondaryunit": "un", "selectedunit": "primary",
+            "unitConversionRate": 0, "minOrderQuantity": 1, "stepQuantity": 1, "maxNumberOfUnitsPerSale": 10,
+            "hasAlternativeSaleUnit": false, "hasConversionRate": false } },
+          "price": { "sales": { "value": 0.1 } }, "priceTotal": { "value": 0.2, "basePriceValue": 0.2 } }
+      ] }
+    ],
+    "totals": {
+      "productsTotalPriceOnly": 4.05, "productsTotalPriceOnlyWithSDR": 4.15, "totalSDRDeposit": "0,10 €",
+      "totalShippingCostNumber": 0, "orderLevelDiscountTotal": { "value": 0.5 }, "shippingLevelDiscountTotal": { "value": 0 },
+      "grandTotalNumber": 3.85, "grandTotal": "3,85 €", "subTotal": "4,25 €"
+    }
+  }
+}

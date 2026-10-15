@@ -51,7 +51,10 @@ export class CartService {
     const cart = await this.getCart();
     const actual = cart.ok ? observedCartQuantity(cart.value, productId, cartItemId) : null;
     const selected = cart.ok ? selectCartItem(cart.value, productId, cartItemId) : null;
-    if (!cart.ok || actual === null || Math.abs(actual - expected) > 0.0005 || (requireAbsence && (!selected?.ok || selected.value !== null))) {
+    // A line that reports its unit must report the requested one; an amount in another unit is not a confirmation.
+    const line = selected?.ok ? selected.value : null;
+    const otherUnit = line?.quantity.status === 'known' && line.quantity.quantity.unit !== requested.unit;
+    if (!cart.ok || actual === null || otherUnit || Math.abs(actual - expected) > 0.0005 || (requireAbsence && (!selected?.ok || selected.value !== null))) {
       return this.unknown(productId, requested, failure('cart_change_unconfirmed').error);
     }
     const confirmed: CartMutationResult = { outcome: 'confirmed', productId, requested,

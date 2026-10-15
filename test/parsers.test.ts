@@ -69,12 +69,12 @@ test('cart JSON supports add and minicart envelopes without invented units or pr
   assert.equal(present(cart.items[0]).price.basis, 'unit');
   const mini = parseCartResponse({ resources: { customerAuthenticated: true }, basket: { itemsSortedByBrand: [{ items: [{ id: '00123-master', productName: 'Milk', secondaryQuantity: 3, priceTotal: { basePriceValue: 4.25 } }] }] } });
   assert.equal(present(valueOf(mini).items[0]).price.basis, 'line');
-  assert.equal(valueOf(mini).total, null);
+  assert.equal(valueOf(mini).totals.products, null);
   assert.equal(present(valueOf(parseCartResponse({ cart: { items: [{ id: '123', productName: 'Milk', quantity: 2 }] } })).items[0]).price.amount, null);
 });
 test('only recognized empty carts succeed; malformed groups and lines fail the entire parse', () => {
   assert.deepEqual(valueOf(parseCartResponse({ action: 'Cart-MiniCartShow', basket: {}, resources: { customerAuthenticated: true } })),
-    { customerAuthenticated: true, items: [], total: { currency: 'EUR', minorUnits: 0 } });
+    { customerAuthenticated: true, items: [], totals: { products: { currency: 'EUR', minorUnits: 0 }, bags: { currency: 'EUR', minorUnits: 0 }, deposit: { currency: 'EUR', minorUnits: 0 }, delivery: null, discounts: { currency: 'EUR', minorUnits: 0 }, grandTotal: { currency: 'EUR', minorUnits: 0 } } });
   assert.equal(parseCartResponse({ basket: { itemsSortedByBrand: [] } }).ok, true);
   for (const input of [null, {}, { basket: {} }, { basket: { itemsSortedByBrand: [{}] } },
     { cart: { items: [{}] } }, rawCart(-1), { cart: { items: [{ id: '123', productName: 'Milk', quantity: null }] } }] as const) assert.equal(parseCartResponse(input).ok, false);

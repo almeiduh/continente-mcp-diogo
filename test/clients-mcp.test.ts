@@ -120,7 +120,7 @@ test('empty and partial results agree with text and retain data and failure coun
   services.history.listFrequentlyBoughtProducts = async () => ok({ products: [], listed: 2, scanned: 2, succeeded: 1, failed: 1, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'partial', nextCursor: null });
   const frequency = await client.callTool({ name: 'list_frequently_bought_products' });
   assert.equal(statusOf(frequency), 'partial'); assert.match(textOf(frequency), /1 of 2 orders/);
-  services.cart.getCart = async () => ok({ customerAuthenticated: true, items: [], total: null });
+  services.cart.getCart = async () => ok({ customerAuthenticated: true, items: [], totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null } });
   const cart = await client.callTool({ name: 'get_cart' });
   assert.equal(statusOf(cart), 'empty'); assert.match(textOf(cart), /cart is empty/);
 });

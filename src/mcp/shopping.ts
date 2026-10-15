@@ -148,10 +148,15 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error);
     const cart = result.value;
     if (!cart.items.length) return response(cart, 'The cart is empty.', 'empty');
-    const list = numbered(cart.items.map(item => `${item.name} — ${observed(item.quantity)} × ${quoted(item.price)}` +
+    const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)} × ${quoted(item.price)}` +
       `\n   productId: ${item.productId}${item.cartItemId ? `, cartItemId: ${item.cartItemId}` : ''}`));
-    return response(cart, `Cart (${cart.items.length} lines):\n\n${list}\n\nTotal: ${cart.total === null ? 'unavailable' : euros(cart.total)}` +
-      `\nCheckout happens on the website: ${CHECKOUT_URL}`);
+    const { totals } = cart;
+    const optional = ([['Deposit', totals.deposit], ['Delivery', totals.delivery], ['Discounts', totals.discounts]] as const)
+      .filter(([, value]) => value !== null && value.minorUnits > 0).map(([label, value]) => `${label}: ${euros(value)}`);
+    const summary = [`Products: ${totals.products === null ? 'unavailable' : euros(totals.products)}`,
+      ...(totals.bags !== null && totals.bags.minorUnits > 0 ? [`Bags: ${euros(totals.bags)}`] : []), ...optional,
+      `Total to pay: ${totals.grandTotal === null ? 'unavailable' : euros(totals.grandTotal)}`].join('\n');
+    return response(cart, `Cart (${cart.items.length} lines):\n\n${list}\n\n${summary}\nCheckout happens on the website: ${CHECKOUT_URL}`);
   }
 
   private async mutation(result: MutationResult, operation: 'add' | 'set' | 'remove'): Promise<CallToolResult> {
@@ -254,7 +259,8 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'snapshots older than 24 hours are marked stale. Pass refresh: true to fetch the current list from the website.',
       contracts.FavoritesInput, contracts.FavoritesOutput, READ, args => handlers.listFavorites(args.refresh)),
     tool('get_cart', 'Get cart',
-      'Read the shopping cart: each line with productId, cartItemId, quantity and price, plus the total. ' +
+      'Read the shopping cart: each line with productId, cartItemId, kind (product or bag), quantity and price, plus the totals ' +
+      '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),
     tool('add_cart_item', 'Add to cart',

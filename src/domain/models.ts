@@ -27,14 +27,31 @@ export const CartItemSchema = z.strictObject({
   productId: ProductIdSchema,
   cartItemId: CartItemIdSchema.nullable(),
   name: z.string().trim().min(1),
+  /** `bag` for the shopping bags the website adds to the cart on its own; `product` for everything else. */
+  kind: z.enum(['product', 'bag']),
   quantity: ObservedQuantitySchema,
   price: QuotedMoneySchema,
 });
 export type CartItem = z.infer<typeof CartItemSchema>;
+/** Each amount as the website reports it, or null when it reports none. */
+export const CartTotalsSchema = z.strictObject({
+  /** Product lines only, without bags or deposit. */
+  products: MoneySchema.nullable(),
+  /** The bag lines. */
+  bags: MoneySchema.nullable(),
+  /** Bottle and can deposit (SDR). */
+  deposit: MoneySchema.nullable(),
+  delivery: MoneySchema.nullable(),
+  /** Amount taken off by order and delivery discounts. */
+  discounts: MoneySchema.nullable(),
+  /** The amount to pay as the website shows it; it includes the bags. */
+  grandTotal: MoneySchema.nullable(),
+});
+export type CartTotals = z.infer<typeof CartTotalsSchema>;
 export const CartSchema = z.strictObject({
   customerAuthenticated: z.boolean(),
   items: z.array(CartItemSchema),
-  total: MoneySchema.nullable(),
+  totals: CartTotalsSchema,
 });
 export type Cart = z.infer<typeof CartSchema>;
 

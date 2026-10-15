@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 import { z } from 'zod';
-import { CartSchema, ProductSaleRulesSchema, failure, parseMoneyAmount, parseProductReference, parseValue, success } from '../domain/index.js';
-import type { Cart, CartItem, ProductId, ProductSaleRules, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
+import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, failure, parseMoneyAmount, parseProductReference, parseValue, success } from '../domain/index.js';
+import type { Cart, CartItem, CartTotals, Money, ProductId, ProductSaleRules, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
 import { field, record } from './records.js';
 import { storefrontUrl } from './catalog.js';
 
@@ -23,41 +23,80 @@ function cartLines(input: unknown): unknown[] | null {
   return field(input, 'action') === 'Cart-MiniCartShow' && basket && Object.keys(basket).length === 0 ? [] : null;
 }
 
-function cartLine(line: unknown): Result<CartItem, ToolError> {
+/**
+ * The unit of a line's `secondaryQuantity`, from the line's own sale rules: pieces for products sold
+ * by the piece but priced per kg, units otherwise. The line's `selectedunit` and `selectedDimension`
+ * do not follow the quantity, so they are not used.
+ */
+function lineUnit(line: unknown): QuantityUnit | null | undefined {
+  const rates = record(field(line, 'measurementInfo', 'quantityConversionRates'));
+  if (!rates) return undefined;
+  const alternative = rates.hasAlternativeSaleUnit === true || rates.hasConversionRate === true;
+  const unit = QuantityUnitSchema.safeParse(alternative ? rates.secondaryunit : rates.primaryunit);
+  return unit.success && (alternative || unit.data === 'un') ? unit.data : null;
+}
+
+function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolError> {
   const reference = parseProductReference(field(line, 'id'));
-  // Weighted lines report the amount in the displayed sale unit as secondaryQuantity.
   const reported = field(line, 'secondaryQuantity') ?? field(line, 'quantity');
   const rawQuantity = typeof reported === 'string' && reported.trim() !== '' ? Number(reported) : reported;
   const unitPrice = field(line, 'price', 'sales', 'value');
   const lineTotal = field(line, 'priceTotal', 'basePriceValue');
   const price = parseMoneyAmount(unitPrice ?? lineTotal);
   if (!reference.ok || typeof rawQuantity !== 'number' || !Number.isFinite(rawQuantity) || rawQuantity < 0 || !price.ok) return unrecognizedCart();
+  const unit = lineUnit(line);
   return parseValue(CartSchema.shape.items.element, {
     productId: reference.value.productId,
     cartItemId: field(line, 'UUID') ?? field(line, 'uuid') ?? null,
     name: field(line, 'productName'),
-    quantity: { status: 'unknown', value: rawQuantity, rawText: null },
+    kind: bag !== null && reference.value.productId === bag ? 'bag' : 'product',
+    quantity: unit ? { status: 'known', quantity: { value: rawQuantity, unit } }
+      : { status: 'unknown', value: rawQuantity, rawText: null, ...(unit === null ? { reason: 'unsupported_unit' } : {}) },
     price: { amount: price.value, basis: unitPrice != null ? 'unit' : lineTotal != null ? 'line' : 'unknown' },
   }, 'cart line');
+}
+
+const money = (value: unknown): Money | null => { const parsed = parseMoneyAmount(value); return parsed.ok ? parsed.value : null; };
+const euro = (minorUnits: number): Money => ({ currency: 'EUR', minorUnits });
+/** Mini-cart totals. An amount the website does not report, or reports unreadably, stays null. */
+function cartTotals(input: unknown, lines: unknown[], bag: ProductId | null): CartTotals {
+  const totals = field(input, 'basket', 'totals');
+  if (lines.length === 0 && field(input, 'action') === 'Cart-MiniCartShow' && !record(totals)) {
+    return { products: euro(0), bags: euro(0), deposit: euro(0), delivery: null, discounts: euro(0), grandTotal: euro(0) };
+  }
+  const products = money(field(input, 'cart', 'totalProductsValueNumber') ?? field(totals, 'productsTotalPriceOnly'));
+  const withDeposit = money(field(totals, 'productsTotalPriceOnlyWithSDR'));
+  const bagLines = bag === null ? null : lines.filter(line => { const reference = parseProductReference(field(line, 'id')); return reference.ok && reference.value.productId === bag; })
+    .map(line => money(field(line, 'priceTotal', 'value')));
+  const discountParts = [field(totals, 'orderLevelDiscountTotal', 'value'), field(totals, 'shippingLevelDiscountTotal', 'value')]
+    .filter(value => value != null).map(value => typeof value === 'number' ? money(Math.abs(value)) : null);
+  const sum = (amounts: (Money | null)[] | null) => amounts && amounts.every(amount => amount !== null)
+    ? euro(amounts.reduce((total, amount) => total + amount.minorUnits, 0)) : null;
+  return {
+    products,
+    bags: sum(bagLines),
+    deposit: products && withDeposit && withDeposit.minorUnits >= products.minorUnits ? euro(withDeposit.minorUnits - products.minorUnits) : null,
+    delivery: money(field(totals, 'totalShippingCostNumber')),
+    discounts: discountParts.length ? sum(discountParts) : null,
+    grandTotal: money(field(totals, 'grandTotalNumber')),
+  };
 }
 
 export function parseCartResponse(input: unknown): Result<Cart, ToolError> {
   const lines = cartLines(input);
   if (!lines) return unrecognizedCart();
+  const bagReference = parseProductReference(field(input, 'basket', 'resources', 'plasticBagID'));
+  const bag = bagReference.ok ? bagReference.value.productId : null;
   const items: CartItem[] = [];
   for (const line of lines) {
-    const item = cartLine(line);
+    const item = cartLine(line, bag);
     if (!item.ok) return item;
     items.push(item.value);
   }
   const lineIds = items.map(item => item.cartItemId).filter(id => id !== null);
   if (new Set(lineIds).size !== lineIds.length) return failure('invalid_data', 'The cart contains duplicate line identifiers');
   const customerAuthenticated = field(input, 'resources', 'customerAuthenticated') === true;
-  const total = lines.length === 0 && field(input, 'action') === 'Cart-MiniCartShow'
-    ? success({ currency: 'EUR' as const, minorUnits: 0 })
-    : parseMoneyAmount(field(input, 'cart', 'totalProductsValueNumber') ?? field(input, 'basket', 'totals', 'productsTotalPriceOnly') ??
-      field(input, 'basket', 'totals', 'productsTotalPriceOnlyWithSDR'));
-  return total.ok ? success({ customerAuthenticated, items, total: total.value }) : total;
+  return success({ customerAuthenticated, items, totals: cartTotals(input, lines, bag) });
 }
 
 export interface SaleMetadata {

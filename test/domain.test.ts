@@ -89,8 +89,8 @@ test('cart outcomes prevent contradictory confirmation, failure and automatic re
 
 test('cart models preserve unknown price, price basis and unresolved quantity units', () => {
   const cart = {
-    customerAuthenticated: true, total: null, items: [{
-      productId: '00123', cartItemId: null, name: 'Milk',
+    customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null }, items: [{
+      productId: '00123', cartItemId: null, name: 'Milk', kind: 'product',
       quantity: { status: 'unknown', value: 2, rawText: null },
       price: { amount: null, basis: 'unknown' },
     }],

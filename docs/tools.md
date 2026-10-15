@@ -123,8 +123,26 @@ automatically when missing, is marked `stale` after 24 hours, and is replaced wh
 
 ### `get_cart`
 
-`data`: `customerAuthenticated`, `items` (each with `productId`, `cartItemId`, `name`,
-`quantity`, `price`) and `total`.
+`data`: `customerAuthenticated`, `items` (each with `productId`, `cartItemId`, `name`, `kind`,
+`quantity`, `price`) and `totals`.
+
+- `kind` is `bag` for the shopping bags the website adds to the cart by itself, and `product`
+  for everything else.
+- `quantity` is in the line's sale unit, read from the line's own sale rules: pieces (`un`) for
+  products sold by the piece but priced per kg, `un` for everything else. A line without
+  recognisable sale rules keeps its amount with an unknown unit.
+- `totals` holds each amount as the website reports it, or `null` when it reports none:
+
+  | Field | Meaning |
+  | --- | --- |
+  | `products` | Product lines only, without bags or deposit |
+  | `bags` | The bag lines |
+  | `deposit` | Bottle and can deposit (SDR) |
+  | `delivery` | Delivery cost, once the website has one |
+  | `discounts` | Amount taken off by order and delivery discounts |
+  | `grandTotal` | The amount to pay as the website shows it. It includes the bags. |
+
+  Report `grandTotal` as the amount to pay, and don't add the other fields to it yourself.
 
 ### Changing the cart
 

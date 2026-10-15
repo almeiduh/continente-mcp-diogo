@@ -6,13 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `get_cart` returns `totals` instead of `total`: `products`, `bags`, `deposit`, `delivery`, `discounts` and `grandTotal`, the amount to pay. The old `total` left out the bags, so it was less than the amount to pay.
+
 ### Added
 
+- Cart lines have a `kind`, `bag` for the shopping bags the website adds by itself and `product` for everything else.
 - `search_products` and `get_product` return `recommendedPrice`, the recommended retail price (PVPR) the website shows beside the price on many promotions, so assistants can compare it with the selling price. ([#4](https://github.com/andredelgado/continente-mcp/pull/4), thanks [@Lozano-Miguel](https://github.com/Lozano-Miguel))
 
 ### Fixed
 
 - Products sold by the piece but priced per kilogram (fruit, vegetables, meat, fish, counter cheese and ham) had no sale rules, so they could not be added to the cart. Their maximum is now read in kilograms, like the minimum and step, and converted to whole pieces.
+- Cart quantities now have a unit. They were all reported as `unknown`; each line's unit now comes from its own sale rules, so a weighted line reads as pieces. A cart change is no longer confirmed by a line that reports another unit.
 
 ## [0.5.0] - 2026-10-15
 
