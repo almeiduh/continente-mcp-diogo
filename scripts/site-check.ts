@@ -8,6 +8,8 @@ import { join } from 'node:path';
 
 interface PriceTag { amount: { minorUnits: number }; per: string }
 interface Product { productId: string; name: string; price: PriceTag | null }
+interface Quantity { value: number; unit: string }
+interface WeightedRules { saleUnit: string; storefrontUnit: string; minimum: Quantity | null; maximum: Quantity | null; step: Quantity | null }
 interface ToolResult { status: string; data?: Record<string, unknown>; error?: { code: string; message: string } }
 interface Application {
   dispatchToolCall(name: string, args: Record<string, unknown>, options: { timeoutMs: number }): Promise<{ structuredContent?: { result?: ToolResult } }>;
@@ -62,6 +64,19 @@ try {
     const issue = !data ? describe(detail) : !data.price ? 'price missing' : data.availability === 'unknown' ? 'availability unknown'
       : data.saleRules?.status !== 'available' ? 'sale rules unavailable' : null;
     report(issue === null, 'Product page', issue ?? `product ${milk.productId}, ${data?.availability}, sale rules available`);
+  }
+
+  // Produce is sold by the piece but priced per kg; its sale rules must convert to whole pieces.
+  const apple = products(await call('search_products', { query: 'maçã', limit: 10 })).find(product => product.price?.per === 'kg');
+  if (!apple) report(false, 'Weighted product page', 'no product priced per kg to inspect');
+  else {
+    const detail = await call('get_product', { productId: apple.productId });
+    const rules = (detail.data as { saleRules?: { status: string; rules?: WeightedRules } } | undefined)?.saleRules;
+    const whole = (quantity: { value: number; unit: string } | null | undefined) => quantity?.unit === 'un' && Number.isInteger(quantity.value);
+    const issue = !detail.data ? describe(detail) : rules?.status !== 'available' || !rules.rules ? 'sale rules unavailable'
+      : rules.rules.saleUnit !== 'un' || rules.rules.storefrontUnit !== 'kg' ? `sold in ${rules.rules.saleUnit}, priced in ${rules.rules.storefrontUnit}`
+        : !whole(rules.rules.minimum) || !whole(rules.rules.maximum) || !whole(rules.rules.step) ? 'minimum, maximum or step is not a whole number of pieces' : null;
+    report(issue === null, 'Weighted product page', issue ?? `product ${apple.productId}, minimum ${rules?.rules?.minimum?.value} un, maximum ${rules?.rules?.maximum?.value} un`);
   }
 } catch (error) {
   report(false, 'Check run', error instanceof Error ? error.message : String(error));

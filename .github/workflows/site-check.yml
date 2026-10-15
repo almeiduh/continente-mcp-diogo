@@ -1,7 +1,8 @@
 name: Site check
 
 # Weekly check that the live Continente.pt website still parses: signed-out searches, prices per
-# kg, pagination and a product page. Opens an issue when it breaks and closes it once it passes.
+# kg, pagination, a product page and the sale rules of a product priced per kg. Opens an issue
+# when it breaks and closes it once it passes.
 on:
   schedule:
     - cron: '17 6 * * 1'
