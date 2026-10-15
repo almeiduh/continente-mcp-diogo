@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `search_products` and `get_product` return `recommendedPrice`, the recommended retail price (PVPR) the website shows beside the price on many promotions, so assistants can compare it with the selling price.
+- `search_products` and `get_product` return `recommendedPrice`, the recommended retail price (PVPR) the website shows beside the price on many promotions, so assistants can compare it with the selling price. ([#4](https://github.com/andredelgado/continente-mcp/pull/4), thanks [@Lozano-Miguel](https://github.com/Lozano-Miguel))
 
 ### Fixed
 
