@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - **Breaking:** `get_cart` returns `totals` instead of `total`: `products`, `bags`, `deposit`, `delivery`, `discounts` and `grandTotal`, the amount to pay. The old `total` left out the bags, so it was less than the amount to pay.
+- **Breaking:** cart line prices are `{ amount, per }` price tags, like catalogue prices, plus a `lineTotal`. Products sold by the piece but priced by weight were shown as a price "each" when it was the price per kg.
 
 ### Added
 

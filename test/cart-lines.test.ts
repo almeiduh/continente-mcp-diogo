@@ -23,7 +23,21 @@ test('cart lines read their unit from their own sale rules, never from the selec
   ]);
 });
 
-test('a line without usable sale rules keeps its amount with an unknown unit', () => {
+test('cart line prices say what they are for, and line totals come from the website', () => {
+  const cart = valueOf(parseCartResponse(minicart()));
+  assert.deepEqual(cart.items.map(item => [item.productId, item.price, item.lineTotal]), [
+    ['8912985', { amount: eur(85), per: 'item' }, eur(255)],
+    ['7303767', { amount: eur(250), per: 'kg' }, eur(150)],
+    ['9999999', { amount: eur(10), per: 'item' }, eur(20)],
+  ]);
+  const unreadable = minicart();
+  unreadable.basket.itemsSortedByBrand[0].items[0].price.sales.value = 'soon';
+  assert.equal(parseCartResponse(unreadable).ok, false);
+});
+
+test('a line without usable sale rules keeps its amount with an unknown unit and price', () => {
+  assert.equal(present(valueOf(parseCartResponse(line(undefined))).items[0]).price, null);
+  assert.equal(present(valueOf(parseCartResponse(line({ primaryunit: 'kg' }))).items[0]).price, null);
   const quantity = (rates?: Record<string, unknown>) => present(valueOf(parseCartResponse(line(rates))).items[0]).quantity;
   assert.deepEqual(quantity(), { status: 'unknown', value: 2, rawText: null });
   for (const rates of [{ primaryunit: 'kg' }, { primaryunit: 'kg', secondaryunit: 'lt', hasAlternativeSaleUnit: true }, { primaryunit: 'un', selectedunit: 'primary', hasConversionRate: true }]) {
@@ -50,10 +64,11 @@ test('get_cart text shows units, marks bags and lists each total', async () => {
   const app = createShoppingApplication({ version: 'test', services });
   const result = await app.dispatchToolCall('get_cart', {}, {});
   const text = (result.content as { text: string }[])[0]?.text ?? '';
-  assert.match(text, /Leite Meio Gordo — 3 un × €0\.85 each/);
-  assert.match(text, /Saco \(bag\) — 2 un/);
+  assert.match(text, /Leite Meio Gordo — 3 un × €0\.85, line €2\.55\n/);
+  assert.match(text, /Maçã Pink Lady — 3 un × €2\.50\/kg, line €1\.50\n/);
+  assert.match(text, /Saco \(bag\) — 2 un × €0\.10, line €0\.20\n/);
   assert.match(text, /Products: €4\.05\nBags: €0\.20\nDeposit: €0\.10\nDiscounts: €0\.50\nTotal to pay: €3\.85\n/);
-  assert.doesNotMatch(text, /unit unknown|Delivery/);
+  assert.doesNotMatch(text, /unit unknown|each|Delivery/);
   await app.close();
 });
 

@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
 import type { SessionService, MutationResult } from '../ports.js';
-import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, QuotedMoney, Result, ToolError } from '../domain/index.js';
+import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
@@ -41,8 +41,6 @@ const observed = (quantity: ObservedQuantity) => quantity.status === 'known' ? a
   : quantity.value === null ? 'quantity unknown' : `${quantity.value} (unit unknown)`;
 const PER: Record<PriceTag['per'], string> = { item: '', piece: ' per piece', kg: '/kg', l: '/l' };
 const priced = (price: PriceTag | null) => price === null ? 'price unknown' : `${euros(price.amount)}${PER[price.per]}`;
-const quoted = (price: QuotedMoney) => price.amount === null ? 'price unavailable'
-  : `${euros(price.amount)}${price.basis === 'unit' ? ' each' : price.basis === 'line' ? ' line total' : ''}`;
 const numbered = (lines: string[]) => lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
 
 function response(data: unknown, text: string, status: Status = 'success'): CallToolResult {
@@ -148,7 +146,8 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error);
     const cart = result.value;
     if (!cart.items.length) return response(cart, 'The cart is empty.', 'empty');
-    const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)} × ${quoted(item.price)}` +
+    const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)} × ${priced(item.price)}` +
+      `${item.lineTotal ? `, line ${euros(item.lineTotal)}` : ''}` +
       `\n   productId: ${item.productId}${item.cartItemId ? `, cartItemId: ${item.cartItemId}` : ''}`));
     const { totals } = cart;
     const optional = ([['Deposit', totals.deposit], ['Delivery', totals.delivery], ['Discounts', totals.discounts]] as const)
@@ -259,7 +258,8 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'snapshots older than 24 hours are marked stale. Pass refresh: true to fetch the current list from the website.',
       contracts.FavoritesInput, contracts.FavoritesOutput, READ, args => handlers.listFavorites(args.refresh)),
     tool('get_cart', 'Get cart',
-      'Read the shopping cart: each line with productId, cartItemId, kind (product or bag), quantity and price, plus the totals ' +
+      'Read the shopping cart: each line with productId, cartItemId, kind (product or bag), quantity, unit price (per item or per kg) ' +
+      'and lineTotal, plus the totals ' +
       '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),

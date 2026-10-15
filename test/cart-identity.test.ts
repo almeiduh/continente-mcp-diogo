@@ -72,7 +72,7 @@ test('authenticated empty, guest, malformed and unavailable carts remain distinc
   assert.deepEqual(valueOf((await s.service.getCart())).items, []);
   s.client.fetchCart = async () => ok({ resources: { customerAuthenticated: true }, cart: { items: [{ id: '00123', quantity: 2, productName: 'Unknown price' }] } });
   const cart = valueOf((await s.service.getCart()));
-  assert.equal(cart.totals.products, null); assert.equal(present(cart.items[0]).price.amount, null);
+  assert.equal(cart.totals.products, null); assert.equal(present(cart.items[0]).price, null);
 });
 test('post-write guest, malformed, unavailable and ambiguous confirmation never report success', async () => {
   for (const final of [ok({ resources: { customerAuthenticated: false } }), ok({}), fail(), ok({ resources: { customerAuthenticated: true }, cart: { items: [rawCart(3).cart.items[0], rawCart(3).cart.items[0]] } })] as const) {

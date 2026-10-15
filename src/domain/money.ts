@@ -9,13 +9,6 @@ export const MoneySchema = z.strictObject({
 });
 export type Money = z.infer<typeof MoneySchema>;
 
-/** The source of a price determines its basis; a line total is not a unit price. */
-export const QuotedMoneySchema = z.strictObject({
-  amount: MoneySchema.nullable(),
-  basis: z.enum(['unit', 'line', 'unknown']),
-});
-export type QuotedMoney = z.infer<typeof QuotedMoneySchema>;
-
 /** Convert decimal text through integer arithmetic; never round an unrecognized precision. */
 export function parseMoneyAmount(input: unknown): Result<Money | null, ToolError> {
   if (input === null || input === undefined || input === '') return { ok: true, value: null };

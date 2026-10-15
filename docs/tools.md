@@ -57,8 +57,8 @@ calls, for clients that do not pass structured content to the model.
   per-piece `secondaryPrice`; packaged goods show the pack price with a per-kg or per-litre
   `secondaryPrice`. A price per kg or per litre is not the price of one pack. An unknown or
   unrecognised price is `null`.
-- **Cart prices** are `{ amount, basis }`, where `basis` is `unit`, `line` (a line total) or
-  `unknown`.
+- **Cart prices** use the same `{ amount, per }` price tags: `per` is `item`, or `kg` for
+  products sold by the piece but priced by weight. Each cart line also has `lineTotal`.
 - **Quantities** are `{ value, unit }` with unit `un`, `kg`, `g`, `l` or `ml`. Quantities read
   from the website are either `{ status: "known", quantity }` or
   `{ status: "unknown", value, rawText, reason }`; an unknown unit is never guessed.
@@ -124,13 +124,16 @@ automatically when missing, is marked `stale` after 24 hours, and is replaced wh
 ### `get_cart`
 
 `data`: `customerAuthenticated`, `items` (each with `productId`, `cartItemId`, `name`, `kind`,
-`quantity`, `price`) and `totals`.
+`quantity`, `price`, `lineTotal`) and `totals`.
 
 - `kind` is `bag` for the shopping bags the website adds to the cart by itself, and `product`
   for everything else.
 - `quantity` is in the line's sale unit, read from the line's own sale rules: pieces (`un`) for
   products sold by the piece but priced per kg, `un` for everything else. A line without
   recognisable sale rules keeps its amount with an unknown unit.
+- `price` is the unit price with what it is for: per item, or per kg for products sold by the
+  piece (2 apples at €2.99/kg cost less than €5.98). `null` when the line does not say what its
+  price is for. `lineTotal` is the line's total as the website reports it.
 - `totals` holds each amount as the website reports it, or `null` when it reports none:
 
   | Field | Meaning |

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolErrorSchema } from './errors.js';
 import { CartItemIdSchema, OrderIdSchema, OrderNumberSchema, ProductIdSchema, ProductReferenceSchema } from './identity.js';
-import { MoneySchema, PriceTagSchema, QuotedMoneySchema } from './money.js';
+import { MoneySchema, PriceTagSchema } from './money.js';
 import { ObservedQuantitySchema, QuantitySchema, ProductSaleRulesSchema } from './quantity.js';
 
 const productDetails = {
@@ -30,7 +30,10 @@ export const CartItemSchema = z.strictObject({
   /** `bag` for the shopping bags the website adds to the cart on its own; `product` for everything else. */
   kind: z.enum(['product', 'bag']),
   quantity: ObservedQuantitySchema,
-  price: QuotedMoneySchema,
+  /** Unit price with what it is for: per item, or per kg for products sold by the piece but priced by weight. */
+  price: PriceTagSchema.nullable(),
+  /** The line's total as the website reports it. */
+  lineTotal: MoneySchema.nullable(),
 });
 export type CartItem = z.infer<typeof CartItemSchema>;
 /** Each amount as the website reports it, or null when it reports none. */

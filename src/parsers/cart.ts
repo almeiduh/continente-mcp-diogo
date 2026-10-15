@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 import { z } from 'zod';
 import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, failure, parseMoneyAmount, parseProductReference, parseValue, success } from '../domain/index.js';
-import type { Cart, CartItem, CartTotals, Money, ProductId, ProductSaleRules, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
+import type { Cart, CartItem, CartTotals, Money, PriceTag, ProductId, ProductSaleRules, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
 import { field, record } from './records.js';
 import { storefrontUrl } from './catalog.js';
 
@@ -23,36 +23,40 @@ function cartLines(input: unknown): unknown[] | null {
   return field(input, 'action') === 'Cart-MiniCartShow' && basket && Object.keys(basket).length === 0 ? [] : null;
 }
 
+interface LineUnits { quantity: QuantityUnit | null; price: PriceTag['per'] | null }
+const PRICE_PER: Partial<Record<string, PriceTag['per']>> = { kg: 'kg', l: 'l', lt: 'l' };
 /**
- * The unit of a line's `secondaryQuantity`, from the line's own sale rules: pieces for products sold
- * by the piece but priced per kg, units otherwise. The line's `selectedunit` and `selectedDimension`
- * do not follow the quantity, so they are not used.
+ * A line's units, from its own sale rules. Products sold by the piece but priced per kg count pieces
+ * and quote a price per kg; everything else counts and prices units. The line's `selectedunit` and
+ * `selectedDimension` do not follow the quantity, so they are not used.
  */
-function lineUnit(line: unknown): QuantityUnit | null | undefined {
+function lineUnits(line: unknown): LineUnits | undefined {
   const rates = record(field(line, 'measurementInfo', 'quantityConversionRates'));
   if (!rates) return undefined;
-  const alternative = rates.hasAlternativeSaleUnit === true || rates.hasConversionRate === true;
-  const unit = QuantityUnitSchema.safeParse(alternative ? rates.secondaryunit : rates.primaryunit);
-  return unit.success && (alternative || unit.data === 'un') ? unit.data : null;
+  if (rates.hasAlternativeSaleUnit !== true && rates.hasConversionRate !== true) {
+    return rates.primaryunit === 'un' ? { quantity: 'un', price: 'item' } : { quantity: null, price: null };
+  }
+  const unit = QuantityUnitSchema.safeParse(rates.secondaryunit);
+  return { quantity: unit.success ? unit.data : null, price: PRICE_PER[String(rates.primaryunit)] ?? null };
 }
 
 function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolError> {
   const reference = parseProductReference(field(line, 'id'));
   const reported = field(line, 'secondaryQuantity') ?? field(line, 'quantity');
   const rawQuantity = typeof reported === 'string' && reported.trim() !== '' ? Number(reported) : reported;
-  const unitPrice = field(line, 'price', 'sales', 'value');
-  const lineTotal = field(line, 'priceTotal', 'basePriceValue');
-  const price = parseMoneyAmount(unitPrice ?? lineTotal);
-  if (!reference.ok || typeof rawQuantity !== 'number' || !Number.isFinite(rawQuantity) || rawQuantity < 0 || !price.ok) return unrecognizedCart();
-  const unit = lineUnit(line);
+  const unitPrice = parseMoneyAmount(field(line, 'price', 'sales', 'value'));
+  const lineTotal = parseMoneyAmount(field(line, 'priceTotal', 'value'));
+  if (!reference.ok || typeof rawQuantity !== 'number' || !Number.isFinite(rawQuantity) || rawQuantity < 0 || !unitPrice.ok || !lineTotal.ok) return unrecognizedCart();
+  const units = lineUnits(line);
   return parseValue(CartSchema.shape.items.element, {
     productId: reference.value.productId,
     cartItemId: field(line, 'UUID') ?? field(line, 'uuid') ?? null,
     name: field(line, 'productName'),
     kind: bag !== null && reference.value.productId === bag ? 'bag' : 'product',
-    quantity: unit ? { status: 'known', quantity: { value: rawQuantity, unit } }
-      : { status: 'unknown', value: rawQuantity, rawText: null, ...(unit === null ? { reason: 'unsupported_unit' } : {}) },
-    price: { amount: price.value, basis: unitPrice != null ? 'unit' : lineTotal != null ? 'line' : 'unknown' },
+    quantity: units?.quantity ? { status: 'known', quantity: { value: rawQuantity, unit: units.quantity } }
+      : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
+    price: unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null,
+    lineTotal: lineTotal.value,
   }, 'cart line');
 }
 
