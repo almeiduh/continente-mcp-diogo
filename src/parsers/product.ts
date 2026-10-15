@@ -3,7 +3,7 @@ import { ProductDetailsSchema, parsePriceTag, parseProductReference, parseValue 
 import type { ProductDetails, ProductId, Result, ToolError } from '../domain/index.js';
 import { success, failure } from '../domain/index.js';
 import { parseSaleRules } from './cart.js';
-import { productReferenceFromUrl, storefrontUrl } from './catalog.js';
+import { productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
 import { record } from './records.js';
 
 /** Scope every source to the requested product; recommendations cannot supply missing facts. */
@@ -27,10 +27,13 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     const parsed = parsePriceTag($(`.ct-pdp--prices ${selector}`).first().text());
     return parsed.ok ? parsed.value : null;
   };
+  // Only the product's own price block: recommendation tiles on the page carry their own PVPR.
+  const recommended = parsePriceTag(recommendedPriceLabel($('.ct-pdp--prices .pvpr-info').first().parent().text()));
   const product = {
     ...reference.value, name, url,
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
+    recommendedPrice: recommended.ok ? recommended.value : null,
     availability: availability === 'https://schema.org/InStock' ? 'available' : ['https://schema.org/OutOfStock', 'https://schema.org/Discontinued'].includes(availability) ? 'unavailable' : 'unknown',
     saleRules: rules.ok ? { status: 'available', rules: rules.value.rules } : { status: 'unavailable', error: rules.error },
   };

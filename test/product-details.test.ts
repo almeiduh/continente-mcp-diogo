@@ -14,15 +14,16 @@ test('product detail retains stable identity, bounded sale rules and explicit pr
   const result = parseProductDetails(fixture('product'), url, ProductIdSchema.parse('00123')); assert.equal(result.ok, true);
   const product = result.value; assert.equal(product.productId, '00123'); assert.equal(product.productSlug, 'leite-00123');
   assert.deepEqual(product.price, { amount: { currency: 'EUR', minorUnits: 129 }, per: 'item' });
+  assert.deepEqual(product.recommendedPrice, { amount: { currency: 'EUR', minorUnits: 149 }, per: 'item' });
   assert.equal(product.availability, 'available'); assert.deepEqual(having(product.saleRules, 'rules').rules.maximum, { value: 10, unit: 'un' });
   assert.equal(having(product.saleRules, 'rules').rules.storefrontUnitsPerSaleUnit, 1);
 });
 test('product detail fails closed on changed identity and never invents missing metadata or recommendation prices', () => {
   assert.equal(errorOf(parseProductDetails(fixture('product'), url.replace('00123', '999'), ProductIdSchema.parse('00123'))).code, 'invalid_data');
   assert.equal(errorOf(parseProductDetails('<main>Changed</main>', url, ProductIdSchema.parse('00123'))).code, 'invalid_data');
-  const html = '<h1 class="product-name">Leite</h1><input name="productID" value="00123"><aside><span class="pwc-tile--price-primary">9,99€</span></aside>';
+  const html = '<h1 class="product-name">Leite</h1><input name="productID" value="00123"><aside><div class="list"><span class="pvpr-info">PVPR</span> 12,99€</div><span class="pwc-tile--price-primary">9,99€</span></aside>';
   const product = valueOf(parseProductDetails(html, url, ProductIdSchema.parse('00123')));
-  assert.equal(product.price, null); assert.equal(product.availability, 'unknown');
+  assert.equal(product.price, null); assert.equal(product.recommendedPrice, null); assert.equal(product.availability, 'unknown');
   assert.equal(product.saleRules.status, 'unavailable');
   const unavailable = fixture('product').replace('InStock', 'OutOfStock').replace('"primaryunit":"un"', '"primaryunit":"unknown"');
   assert.equal(valueOf(parseProductDetails(unavailable, url, ProductIdSchema.parse('00123'))).availability, 'unavailable');

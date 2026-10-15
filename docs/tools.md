@@ -76,8 +76,13 @@ Search uses the local favorites snapshot and never signs in to refresh it.
 
 Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`,
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
-`400 gr (peso escorrido 260 gr)`), `minimumText` (a minimum purchase such as `600 gr (3 un)`)
-and `favorite`.
+`400 gr (peso escorrido 260 gr)`), `minimumText` (a minimum purchase such as `600 gr (3 un)`),
+`recommendedPrice` and `favorite`.
+
+`recommendedPrice` is the recommended retail price (PVPR) the website shows beside the price
+on many promotions, or `null` when it shows none. Promotions such as multi-buy offers have no
+PVPR, so it is not a complete list of promotions. Compare it with `price` rather than treating
+its presence as a discount.
 
 A result the server cannot read does not fail the search. It is skipped, or kept with an
 unknown price when only the price is unreadable, and described in `failures`; the result is
@@ -88,7 +93,8 @@ then `partial`.
 
 ### `get_product`
 
-Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `availability`
+Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `recommendedPrice`
+(as in `search_products`), `availability`
 (`available`, `unavailable` or `unknown`) and `saleRules`:
 
 ```json

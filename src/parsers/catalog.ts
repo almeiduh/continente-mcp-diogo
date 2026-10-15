@@ -30,6 +30,10 @@ function minimumLabel(label: string): string | null {
 function packageLabel(label: string): string | null {
   return text(/^emb\.\s*(.+)$/i.exec(text(label))?.[1] ?? '') || null;
 }
+/** The amount in a "PVPR 6,00€" label, the recommended retail price shown beside a promotional price. */
+export function recommendedPriceLabel(label: string): string {
+  return text(label).replace(/^PVPR\s*/i, '');
+}
 /** An unrecognised price is reported, not fatal: the product stays usable with an unknown price. */
 function priceOrNull(label: string): { price: PriceTag | null; recognised: boolean } {
   const parsed = parsePriceTag(label);
@@ -61,10 +65,13 @@ export function parseProductSearchPage(html: string): Result<SearchPage, ToolErr
     if (!href || !name || !reference?.ok) { problem(`${position} was not recognised and was skipped.`); return; }
     const main = priceOrNull(text(card.find('.pwc-tile--price-primary').first().text()));
     const secondary = priceOrNull(text(card.find('.pwc-tile--price-secondary').first().text()));
+    const recommended = priceOrNull(recommendedPriceLabel(card.find('.pvpr-info').first().parent().text()));
     if (!main.recognised) problem(`${position} (product ${reference.value.productId}) has a price in an unrecognised format; its price is unknown.`);
+    if (!recommended.recognised) problem(`${position} (product ${reference.value.productId}) has a recommended price (PVPR) in an unrecognised format; it is unknown.`);
     const quantity = card.find('.pwc-tile--quantity').first().text();
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
-      secondaryPrice: secondary.price, packageText: packageLabel(quantity), minimumText: minimumLabel(quantity) }, 'product');
+      secondaryPrice: secondary.price, packageText: packageLabel(quantity), minimumText: minimumLabel(quantity),
+      recommendedPrice: recommended.price }, 'product');
     if (product.ok) products.push(product.value); else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });
   if (!products.length && problems.length) return failure('invalid_data', 'No search result on the page could be recognised');

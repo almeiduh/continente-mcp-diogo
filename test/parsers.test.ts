@@ -13,10 +13,10 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
   assert.equal(page.products.length, 3); assert.deepEqual(page.problems, []);
   assert.deepEqual(page.products[0], { productId: '00123', productSlug: 'leite-00123', name: 'Leite Meio Gordo',
     price: { amount: eur(129), per: 'item' }, url: 'https://www.continente.pt/produto/leite-00123.html',
-    secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null });
+    secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' } });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
-  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null);
+  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.recommendedPrice, null);
   assert.equal(present(page.products[2]).price, null);
   assert.equal(valueOf(parseProductSearchPage(fixture('catalog') + fixture('catalog'))).products.length, 3);
 });
@@ -30,6 +30,13 @@ test('one unreadable result is reported without failing the rest of the page', (
   ]);
   const broken = parseProductSearchPage('<main><div class="ct-inner-tile-wrap"><span>no product</span></div></main>');
   assert.equal(broken.ok, false);
+});
+test('an unreadable recommended price is reported and leaves the product usable', () => {
+  const page = valueOf(parseProductSearchPage('<main><div class="ct-inner-tile-wrap"><a href="/produto/leite-00123.html">Leite</a>' +
+    '<span class="pwc-tile--price-primary">1,29€</span><div class="list"><span class="pvpr-info">PVPR</span> sob consulta</div></div></main>'));
+  assert.deepEqual(present(page.products[0]).price, { amount: eur(129), per: 'item' }); assert.equal(present(page.products[0]).recommendedPrice, null);
+  assert.deepEqual(page.problems.map(problem => problem.message),
+    ['Search result 1 (product 00123) has a recommended price (PVPR) in an unrecognised format; it is unknown.']);
 });
 test('price labels parse strictly and say what they are for', () => {
   const cases: [string, unknown][] = [['1,29€', { amount: eur(129), per: 'item' }], [' 1,19€/kg ', { amount: eur(119), per: 'kg' }],

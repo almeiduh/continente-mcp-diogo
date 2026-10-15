@@ -20,7 +20,7 @@ test('produce priced per kg is searchable and keeps what each price is for', asy
   const banana = present(dataOf(result, SearchData).products.find(product => product.productId === '456'));
   assert.deepEqual(banana.price, { amount: { currency: 'EUR', minorUnits: 119 }, per: 'kg' });
   assert.match(textOf(result), /Banana Madeira — €1\.19\/kg \(€0\.24 per piece\), minimum 600 gr \(3 un\)/);
-  assert.match(textOf(result), /Leite Meio Gordo — €1\.29 \(€1\.29\/l\), pack 1 lt/);
+  assert.match(textOf(result), /Leite Meio Gordo — €1\.29 \(€1\.29\/l\), PVPR €1\.49, pack 1 lt/);
 });
 
 test('a partly unreadable results page still returns its products as a partial result', async t => {

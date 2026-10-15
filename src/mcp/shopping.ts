@@ -59,7 +59,8 @@ function errorResult(error: ToolError, mutation?: MutationSummary): CallToolResu
 
 export function formatProductSearchResults(products: SearchResult['page']['items']): string {
   return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''} — ${priced(product.price)}` +
-    `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.packageText ? `, pack ${product.packageText}` : ''}` +
+    `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}` +
+    `${product.packageText ? `, pack ${product.packageText}` : ''}` +
     `${product.minimumText ? `, minimum ${product.minimumText}` : ''}\n   productId: ${product.productId}`));
 }
 function formatSaleRules(rules: ProductSaleRules): string {
@@ -69,7 +70,8 @@ function formatSaleRules(rules: ProductSaleRules): string {
 }
 function formatProduct(product: ProductDetails): string {
   return [`${product.name}`, `productId: ${product.productId}`,
-    `Price: ${priced(product.price)}${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}`,
+    `Price: ${priced(product.price)}${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}` +
+      `${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}`,
     `Availability: ${product.availability}`,
     product.saleRules.status === 'available' ? `Sale rules: ${formatSaleRules(product.saleRules.rules)}`
       : `Sale rules unavailable: ${product.saleRules.error.message}`, `URL: ${product.url}`].join('\n');

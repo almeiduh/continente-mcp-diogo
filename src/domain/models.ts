@@ -17,6 +17,8 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   secondaryPrice: PriceTagSchema.nullable(),
   /** Pack size as displayed, such as `940 gr`, `2 x 52 gr` or `1,2 kg (aprox.)`. */
   packageText: z.string().nullable(),
+  /** The recommended retail price (PVPR) shown beside a promotional price; null when the website shows none. */
+  recommendedPrice: PriceTagSchema.nullable(),
   minimumText: z.string().nullable(),
 });
 export type Product = z.infer<typeof ProductSchema>;
@@ -79,7 +81,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),
