@@ -49,12 +49,14 @@ test('an active read is cancelled without waiting for a stalled upstream respons
   assert.equal(result.isError, true); assert.equal(toolError(result).code, 'cancelled');
   await app.close();
 });
-test('deadline stops a stalled order scan and preserves completed details and progress', async () => {
-  const { services } = injectedServices(); let reads = 0; const progress: import('../src/session/request.js').Progress[] = [];
+test('deadline stops a stalled order scan and preserves completed details and progress', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const { services } = injectedServices(); let reads = 0; const stalled = deferred(); const progress: import('../src/session/request.js').Progress[] = [];
   services.orders = new OrderService({ async fetchOrderHistory() { return ok(ordersPage); },
-    async fetchOrderLines() { return ++reads === 1 ? ok(fixture('order')) : new Promise(() => {}); } });
+    async fetchOrderLines() { if (++reads === 1) return ok(fixture('order')); stalled.resolve(); return new Promise(() => {}); } });
   const app = createShoppingApplication({ version: 'test', services });
-  const result = await app.dispatchToolCall('list_orders', {}, { timeoutMs: 40, onProgress: value => progress.push(value) });
+  const call = app.dispatchToolCall('list_orders', {}, { timeoutMs: 40, onProgress: value => progress.push(value) });
+  await stalled.promise; t.mock.timers.tick(40); const result = await call;
   assert.equal(statusOf(result), 'partial');
   assert.equal(present(dataOf(result, OrdersData).orders[0]).lines.status, 'available');
   assert.equal(having(present(dataOf(result, OrdersData).orders[1]).lines, 'error').error.code, 'deadline_exceeded');
@@ -68,14 +70,16 @@ test('scan progress travels over MCP using the caller progress token', async t =
   assert.deepEqual(progress.map(value => value.progress), [1, 2]);
   assert.ok(progress.every(value => value.progressToken === 'order-scan' && value.total === 2));
 });
-test('catalogue cancellation keeps already-read products as partial results', async () => {
-  const { services } = injectedServices(); await services.favorites.refreshFavorites(); let reads = 0;
+test('catalogue cancellation keeps already-read products as partial results', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const { services } = injectedServices(); await services.favorites.refreshFavorites(); let reads = 0; const stalled = deferred();
   const catalog = new CatalogClient(double<StorefrontClient>({ async html() { return ok(fixture('catalog')); },
-    session: { async ensureReady() { return double<BrowserLease>({ context: { request: { async get() { reads++; return new Promise<never>(() => {}); } } } }); } },
+    session: { async ensureReady() { return double<BrowserLease>({ context: { request: { async get() { reads++; stalled.resolve(); return new Promise<never>(() => {}); } } } }); } },
     io<T>(lease: unknown, operation: () => Promise<T>) { return requestIO(operation); } }));
   services.catalog = new CatalogService(catalog, services.favorites);
   const app = createShoppingApplication({ version: 'test', services });
-  const result = await app.dispatchToolCall('search_products', { query: 'milk' }, { timeoutMs: 40 });
+  const call = app.dispatchToolCall('search_products', { query: 'milk' }, { timeoutMs: 40 });
+  await stalled.promise; t.mock.timers.tick(40); const result = await call;
   assert.equal(statusOf(result), 'partial');
   assert.equal(dataOf(result, SearchData).products.length, 3);
   assert.equal(present(dataOf(result, SearchData).failures[0]).code, 'deadline_exceeded');
