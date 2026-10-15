@@ -3,7 +3,8 @@ import { ProductDetailsSchema, parsePriceTag, parseProductReference, parseValue 
 import type { ProductDetails, ProductId, Result, ToolError } from '../domain/index.js';
 import { success, failure } from '../domain/index.js';
 import { parseSaleRules } from './cart.js';
-import { productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
+import { minimumLabel, packageLabel, productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
+import { parsePackageLabel } from './package.js';
 import { record } from './records.js';
 
 /** Scope every source to the requested product; recommendations cannot supply missing facts. */
@@ -29,8 +30,12 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
   };
   // Only the product's own price block: recommendation tiles on the page carry their own PVPR.
   const recommended = parsePriceTag(recommendedPriceLabel($('.ct-pdp--prices .pvpr-info').first().parent().text()));
+  // The product's own pack label; recommendation tiles use .pwc-tile--quantity instead.
+  const units = $('.ct-pdp--unit').map((_, node) => $(node).text()).get();
+  const unit = units.length === 1 ? units[0]! : '';
   const product = {
     ...reference.value, name, url,
+    packageText: packageLabel(unit), package: parsePackageLabel(packageLabel(unit)), minimumText: minimumLabel(unit),
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
     recommendedPrice: recommended.ok ? recommended.value : null,

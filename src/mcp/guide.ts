@@ -55,7 +55,7 @@ export const SERVER_INSTRUCTIONS = `Continente MCP shops at Continente.pt for on
 - set_cart_item_quantity sets an exact total (adding the product if needed; 0 removes it). add_cart_item adds on top of what is already there. When the user says how many they need, use set_cart_item_quantity.
 - Change the cart one item at a time and read structuredContent.result before reporting success. confirmedQuantity is what the cart now holds.
 - If a cart change returns mutation.outcome "unknown", the cart may have changed. Call get_cart and decide from its contents. Never repeat the change automatically.
-- Money is EUR in integer minorUnits (129 means €1.29). Each price says what it is for: per item, per piece, per kg or per l. A price per kg or per l is not the price of one pack; check packageText and secondaryPrice before comparing. Missing prices, quantities or completeness stay unknown; do not guess them.
+- Money is EUR in integer minorUnits (129 means €1.29). Each price says what it is for: per item, per piece, per kg or per l. A price per kg or per l is not the price of one pack; check packageText, package (count, each and net quantity) and secondaryPrice before comparing. Missing prices, quantities or completeness stay unknown; do not guess them.
 - If your client supports MCP prompts, the basket-planner prompt has the full workflow for planning a shopping list or basket.`;
 
 export const basketPlannerPrompt: PromptHandler = {

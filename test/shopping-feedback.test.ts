@@ -5,7 +5,7 @@ import { dataOf, statusOf, textOf, toolError } from '../test-support/assertions.
 import { fixture, ok, pages, present, valueOf, fail } from '../test-support/helpers.js';
 import { SearchData, FavoritesData } from '../src/mcp/contracts.js';
 import { parseFavoritesPages } from '../src/parsers/catalog.js';
-import { signInHelp } from '../src/mcp/shopping.js';
+import { signInHelp, signInRecovery } from '../src/mcp/shopping.js';
 import { CatalogService, FavoritesService } from '../src/services/catalog.js';
 
 import assert from 'node:assert/strict';
@@ -70,4 +70,14 @@ test('sign-in errors say whether credentials are missing or were not accepted', 
   const result = await client.callTool({ name: 'get_cart', arguments: {} });
   assert.equal(toolError(result).code, 'not_authenticated');
   assert.match(toolError(result).message, /no Continente email and password are configured/);
+  const signIn = (result.structuredContent as { result: { signIn?: Record<string, unknown> } }).result.signIn;
+  assert.deepEqual(signIn, { credentials: 'missing', action: 'configure_credentials',
+    settings: { environment: ['CONTINENTE_EMAIL', 'CONTINENTE_PASSWORD'], claudeDesktopExtension: ['email', 'password'] },
+    command: 'continentept-mcp login --show-browser', guide: 'https://github.com/andredelgado/continente-mcp/blob/main/docs/configuration.md',
+    publicTools: ['search_products', 'get_product'] });
+  assert.deepEqual([signInRecovery(true).credentials, signInRecovery(true).action], ['configured', 'check_credentials_or_sign_in']);
+  assert.deepEqual([signInRecovery(null).credentials, signInRecovery(null).action], ['unknown', 'check_credentials_or_sign_in']);
+  services.cart.getCart = async () => fail('upstream_unavailable');
+  const other = await client.callTool({ name: 'get_cart', arguments: {} });
+  assert.equal((other.structuredContent as { result: { signIn?: unknown } }).result.signIn, undefined);
 });

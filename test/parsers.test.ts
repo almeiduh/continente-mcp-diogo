@@ -13,10 +13,11 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
   assert.equal(page.products.length, 3); assert.deepEqual(page.problems, []);
   assert.deepEqual(page.products[0], { productId: '00123', productSlug: 'leite-00123', name: 'Leite Meio Gordo',
     price: { amount: eur(129), per: 'item' }, url: 'https://www.continente.pt/produto/leite-00123.html',
-    secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' } });
+    secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' },
+    package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false } });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
-  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.recommendedPrice, null);
+  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null); assert.equal(banana.recommendedPrice, null);
   assert.equal(present(page.products[2]).price, null);
   assert.equal(valueOf(parseProductSearchPage(fixture('catalog') + fixture('catalog'))).products.length, 3);
 });

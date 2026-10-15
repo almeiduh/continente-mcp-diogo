@@ -2,6 +2,7 @@ import { load } from 'cheerio';
 import { FavoriteProductSchema, ProductSchema, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
 import type { FavoriteProduct, PriceTag, Product, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
+import { parsePackageLabel } from './package.js';
 
 export const STOREFRONT_ORIGIN = 'https://www.continente.pt';
 export function storefrontUrl(value: string): string | null {
@@ -22,12 +23,12 @@ const SEARCH_EMPTY = '.search-noresults-wrapper, .search-no-results, [data-searc
 const PRODUCT_LINK = 'a[href*="/produto/"]';
 
 /** Text after "=" in labels such as "Quant. Mínima = 600 gr (3 un)". */
-function minimumLabel(label: string): string | null {
+export function minimumLabel(label: string): string | null {
   const [caption, ...rest] = label.split('=');
   return /m[ií]nim/i.test(caption ?? '') && rest.length ? text(rest.join('=')) || null : null;
 }
 /** Pack size from labels such as "emb. 940 gr" or "emb. 2 x 52 gr". */
-function packageLabel(label: string): string | null {
+export function packageLabel(label: string): string | null {
   return text(/^emb\.\s*(.+)$/i.exec(text(label))?.[1] ?? '') || null;
 }
 /** The amount in a "PVPR 6,00€" label, the recommended retail price shown beside a promotional price. */
@@ -70,7 +71,7 @@ export function parseProductSearchPage(html: string): Result<SearchPage, ToolErr
     if (!recommended.recognised) problem(`${position} (product ${reference.value.productId}) has a recommended price (PVPR) in an unrecognised format; it is unknown.`);
     const quantity = card.find('.pwc-tile--quantity').first().text();
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
-      secondaryPrice: secondary.price, packageText: packageLabel(quantity), minimumText: minimumLabel(quantity),
+      secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
       recommendedPrice: recommended.price }, 'product');
     if (product.ok) products.push(product.value); else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });

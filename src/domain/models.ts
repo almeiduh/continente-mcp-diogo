@@ -10,16 +10,35 @@ const productDetails = {
   price: PriceTagSchema.nullable(),
   url: z.url(),
 };
+/** Pack details parsed from the label; parts the label does not state are null. */
+export const PackageSchema = z.strictObject({
+  /** Items in the pack: the 6 in `6 x 1 lt`, the 12 in `12 rolos`, 1 for a single item. */
+  count: z.number().int().positive().nullable(),
+  /** Quantity of one item, when the label states it. */
+  each: QuantitySchema.nullable(),
+  /** Total quantity in the pack, including any free extra. */
+  net: QuantitySchema.nullable(),
+  /** Drained weight of preserves (`peso escorrido`). */
+  drained: QuantitySchema.nullable(),
+  /** The weight is approximate, as for products sold by the piece. */
+  approximate: z.boolean(),
+});
+export type Package = z.infer<typeof PackageSchema>;
+const packDetails = {
+  /** Pack size as displayed, such as `940 gr`, `2 x 52 gr` or `1,2 kg (aprox.)`. */
+  packageText: z.string().nullable(),
+  package: PackageSchema.nullable(),
+  /** Minimum purchase as displayed, such as `600 gr (3 un)`. */
+  minimumText: z.string().nullable(),
+};
 export const FavoriteProductSchema = ProductReferenceSchema.safeExtend(productDetails);
 export type FavoriteProduct = z.infer<typeof FavoriteProductSchema>;
 export const ProductSchema = FavoriteProductSchema.safeExtend({
   /** The comparison price shown next to the main one, such as per kg or per piece. */
   secondaryPrice: PriceTagSchema.nullable(),
-  /** Pack size as displayed, such as `940 gr`, `2 x 52 gr` or `1,2 kg (aprox.)`. */
-  packageText: z.string().nullable(),
   /** The recommended retail price (PVPR) shown beside a promotional price; null when the website shows none. */
   recommendedPrice: PriceTagSchema.nullable(),
-  minimumText: z.string().nullable(),
+  ...packDetails,
 });
 export type Product = z.infer<typeof ProductSchema>;
 
@@ -101,7 +120,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),

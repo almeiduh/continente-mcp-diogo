@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `search_products` and `get_product` return `package`, the pack label read into numbers: `count`, `each`, `net` (including any free extra), `drained` and `approximate`. For example, `6 x 1 lt` is 6 items of 1 l, 6 l in total. A label with an unknown part gives `null`.
+- `get_product` returns `packageText` and `minimumText`, like `search_products`, and shows the pack size in its text.
+- A `not_authenticated` error before any cart write carries `signIn`: whether credentials are configured, what to do next, the settings and command involved, and which tools work without signing in.
+
 ## [0.6.1] - 2026-10-15
 
 ### Fixed

@@ -117,7 +117,7 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | Tool | What it does |
 | --- | --- |
 | `search_products` | Search the catalogue; favorites rank first |
-| `get_product` | Price, availability and sale rules for one product |
+| `get_product` | Price, pack size, availability and sale rules for one product |
 | `list_favorites` | Your saved favorites (`refresh: true` fetches the latest) |
 | `get_cart` | Cart lines, quantities, bags and totals |
 | `add_cart_item` | Add an amount on top of what is in the cart |

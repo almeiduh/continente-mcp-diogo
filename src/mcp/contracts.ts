@@ -32,11 +32,27 @@ export const FrequentlyBoughtInput = z.strictObject({
 
 export const PublicErrorSchema = ToolErrorSchema.extend({ code: z.union([ToolErrorSchema.shape.code, z.enum(['internal_error', 'invalid_result'])]) });
 const RecoverySchema = z.strictObject({ action: z.literal('get_cart'), automaticReplay: z.literal(false) });
+/** What to do about a sign-in failure, so an assistant can guide the user without parsing the message. */
+export const SignInRecoverySchema = z.strictObject({
+  credentials: z.enum(['configured', 'missing', 'unknown']),
+  /** `configure_credentials` when none are set; otherwise check them, or sign in once in a visible browser. */
+  action: z.enum(['configure_credentials', 'check_credentials_or_sign_in']),
+  settings: z.strictObject({
+    environment: z.tuple([z.literal('CONTINENTE_EMAIL'), z.literal('CONTINENTE_PASSWORD')]),
+    claudeDesktopExtension: z.tuple([z.literal('email'), z.literal('password')]),
+  }),
+  /** Run in a terminal to sign in and complete any extra verification. */
+  command: z.literal('continentept-mcp login --show-browser'),
+  guide: z.url(),
+  /** Tools that keep working without signing in. */
+  publicTools: z.array(z.string()),
+});
 export const ErrorResultSchema = z.strictObject({ status: z.literal('error'), error: PublicErrorSchema,
   mutation: z.discriminatedUnion('outcome', [
     z.strictObject({ outcome: z.literal('not_applied') }),
     z.strictObject({ outcome: z.literal('unknown'), recovery: RecoverySchema }),
   ]).optional(),
+  signIn: SignInRecoverySchema.optional(),
 });
 export const ExecutionErrorSchema = z.strictObject({ result: ErrorResultSchema });
 export function outputSchema<T extends z.ZodType>(data: T, extra: z.ZodRawShape = {}) {

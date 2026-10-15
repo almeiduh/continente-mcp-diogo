@@ -17,6 +17,7 @@ export interface ShoppingServices {
 
 type Status = 'success' | 'empty' | 'partial';
 type MutationSummary = z.infer<typeof contracts.ErrorResultSchema>['mutation'];
+type SignInRecovery = z.infer<typeof contracts.SignInRecoverySchema>;
 
 const CONFIGURATION_GUIDE = 'https://github.com/andredelgado/continente-mcp/blob/main/docs/configuration.md';
 const PUBLIC_TOOLS = 'Searching and product details work without signing in.';
@@ -30,6 +31,13 @@ export function signInHelp(credentialsConfigured: boolean | null): string {
     : 'Continente did not accept the sign-in, or no credentials are configured';
   return `Sign-in failed: ${cause}. Check the credentials, or run \`continentept-mcp login --show-browser\` in a terminal `
     + `to sign in and complete any verification (see ${CONFIGURATION_GUIDE}). ${PUBLIC_TOOLS}`;
+}
+/** The structured form of `signInHelp`. */
+export function signInRecovery(credentialsConfigured: boolean | null): SignInRecovery {
+  return { credentials: credentialsConfigured === null ? 'unknown' : credentialsConfigured ? 'configured' : 'missing',
+    action: credentialsConfigured === false ? 'configure_credentials' : 'check_credentials_or_sign_in',
+    settings: { environment: ['CONTINENTE_EMAIL', 'CONTINENTE_PASSWORD'], claudeDesktopExtension: ['email', 'password'] },
+    command: 'continentept-mcp login --show-browser', guide: CONFIGURATION_GUIDE, publicTools: ['search_products', 'get_product'] };
 }
 const CHECKOUT_URL = 'https://www.continente.pt/checkout/carrinho/';
 
@@ -46,13 +54,13 @@ const numbered = (lines: string[]) => lines.map((line, index) => `${index + 1}. 
 function response(data: unknown, text: string, status: Status = 'success'): CallToolResult {
   return { structuredContent: { result: { status, data } }, content: [{ type: 'text', text }] };
 }
-function errorResult(error: ToolError, mutation?: MutationSummary): CallToolResult {
+function errorResult(error: ToolError, mutation?: MutationSummary, signIn?: SignInRecovery): CallToolResult {
   const unknown = mutation?.outcome === 'unknown';
   const publicError = { ...error, ...(unknown ? { retryable: false } : {}) };
   const note = unknown ? '\nThe cart may have changed. Call get_cart before making another change; do not repeat this request automatically.'
     : mutation ? '\nThe cart was not changed.' : '';
   return { isError: true, content: [{ type: 'text', text: `Error (${publicError.code}): ${publicError.message}${note}` }],
-    structuredContent: { result: { status: 'error', error: publicError, ...(mutation ? { mutation } : {}) } } };
+    structuredContent: { result: { status: 'error', error: publicError, ...(mutation ? { mutation } : {}), ...(signIn ? { signIn } : {}) } } };
 }
 
 export function formatProductSearchResults(products: SearchResult['page']['items']): string {
@@ -66,10 +74,19 @@ function formatSaleRules(rules: ProductSaleRules): string {
     rules.step && `step ${amount(rules.step)}`].filter(Boolean).join(', ');
   return `sold in ${rules.saleUnit}${bounds ? ` (${bounds})` : ''}`;
 }
+/** "6 items, 6 l in total, drained 260 g" from the parsed pack details. */
+function packSummary(pack: NonNullable<ProductDetails['package']>): string {
+  return [pack.count !== null && pack.count > 1 ? `${pack.count} items` : '',
+    pack.net ? `${amount(pack.net)}${pack.approximate ? ' (approximate)' : ''} in total` : '',
+    pack.drained ? `drained ${amount(pack.drained)}` : ''].filter(Boolean).join(', ');
+}
 function formatProduct(product: ProductDetails): string {
+  const summary = product.package ? packSummary(product.package) : '';
   return [`${product.name}`, `productId: ${product.productId}`,
     `Price: ${priced(product.price)}${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}` +
       `${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}`,
+    ...(product.packageText ? [`Pack: ${product.packageText}${summary ? ` (${summary})` : ''}`] : []),
+    ...(product.minimumText ? [`Minimum purchase: ${product.minimumText}`] : []),
     `Availability: ${product.availability}`,
     product.saleRules.status === 'available' ? `Sale rules: ${formatSaleRules(product.saleRules.rules)}`
       : `Sale rules unavailable: ${product.saleRules.error.message}`, `URL: ${product.url}`].join('\n');
@@ -102,8 +119,8 @@ export class ShoppingHandlers {
   private async failed(error: ToolError, mutation?: MutationSummary): Promise<CallToolResult> {
     if (error.code !== 'not_authenticated' || mutation?.outcome === 'unknown') return errorResult(error, mutation);
     const status = await this.services.session.getStatus?.().catch(() => undefined);
-    const configured = status ? status.credentials.hasEmail === true && status.credentials.hasPassword === true : null;
-    return errorResult({ ...error, message: signInHelp(status?.credentials.hasEmail === null ? null : configured) }, mutation);
+    const configured = !status || status.credentials.hasEmail === null ? null : status.credentials.hasEmail === true && status.credentials.hasPassword === true;
+    return errorResult({ ...error, message: signInHelp(configured) }, mutation, signInRecovery(configured));
   }
   private recover<T>(operation: () => Promise<Result<T, ToolError>>) {
     return withAuthenticationRecovery(operation, () => this.services.session.refreshAuthentication());
@@ -250,7 +267,7 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'each price with what it is for (per item, piece, kg or litre), the pack size and productId. Reads at most five result pages, so completeness may be "unknown" for broad queries.',
       contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit)),
     tool('get_product', 'Get product',
-      'Get one product by productId: price, availability and sale rules (sale unit, minimum, maximum and step). ' +
+      'Get one product by productId: price, pack size, availability and sale rules (sale unit, minimum, maximum and step). ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
     tool('list_favorites', 'List favorites',

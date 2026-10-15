@@ -76,8 +76,22 @@ Search uses the local favorites snapshot and never signs in to refresh it.
 
 Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`,
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
-`400 gr (peso escorrido 260 gr)`), `minimumText` (a minimum purchase such as `600 gr (3 un)`),
-`recommendedPrice` and `favorite`.
+`400 gr (peso escorrido 260 gr)`), `package`, `minimumText` (a minimum purchase such as
+`600 gr (3 un)`), `recommendedPrice` and `favorite`.
+
+`package` is the pack label read into numbers, or `null` when any part of the label is not a
+known pattern:
+
+| Field | Meaning | `6 x 1 lt` | `400 gr (peso escorrido 260 gr)` | `12 rolos` |
+| --- | --- | --- | --- | --- |
+| `count` | Items in the pack | 6 | 1 | 12 |
+| `each` | Quantity of one item | 1 l | 400 g | `null` |
+| `net` | Total quantity, including any free extra | 6 l | 400 g | `null` |
+| `drained` | Drained weight of preserves | `null` | 260 g | `null` |
+| `approximate` | The weight is approximate, as for produce sold by the piece | `false` | `false` | `false` |
+
+Centilitres are given in millilitres (`75 cl` is 750 ml), and a free extra such as
+`120 gr + 30 gr GRÁTIS` counts in `net` (150 g).
 
 `recommendedPrice` is the recommended retail price (PVPR) the website shows beside the price
 on many promotions, or `null` when it shows none. Promotions such as multi-buy offers have no
@@ -93,8 +107,8 @@ then `partial`.
 
 ### `get_product`
 
-Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `recommendedPrice`
-(as in `search_products`), `availability`
+Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `recommendedPrice`,
+`packageText`, `package` and `minimumText` (as in `search_products`), `availability`
 (`available`, `unavailable` or `unknown`) and `saleRules`:
 
 ```json
@@ -237,7 +251,7 @@ credentials, cookies or file paths.
 | `quantity_below_minimum` | The resulting quantity is below the product minimum. |
 | `sale_rules_unknown` | The product's sale rules could not be interpreted safely. |
 | `not_found` | The product, cart line or order does not exist. |
-| `not_authenticated` | Sign-in is required and automatic sign-in failed or is not configured. The message says which, and what to do. |
+| `not_authenticated` | Sign-in is required and automatic sign-in failed or is not configured. The message says which, and what to do; `signIn` says the same in fields (below). |
 | `upstream_unavailable` | The website could not be reached or returned an error. |
 | `invalid_data` | The website returned something the server does not recognise. |
 | `order_details_unavailable` | Order details could not be read. |
@@ -247,6 +261,21 @@ credentials, cookies or file paths.
 | `browser_unavailable` | Chromium is still downloading for first use, or the download failed. Retryable. |
 | `cancelled`, `deadline_exceeded`, `server_closed`, `queue_full` | The request stopped before completing. |
 | `internal_error`, `invalid_result` | Unexpected server failure. Details are not exposed. |
+
+A `not_authenticated` error that happens before any cart write also carries `signIn`, so an
+assistant can guide the user without parsing the message:
+
+```json
+{ "credentials": "missing", "action": "configure_credentials",
+  "settings": { "environment": ["CONTINENTE_EMAIL", "CONTINENTE_PASSWORD"], "claudeDesktopExtension": ["email", "password"] },
+  "command": "continentept-mcp login --show-browser",
+  "guide": "https://github.com/andredelgado/continente-mcp/blob/main/docs/configuration.md",
+  "publicTools": ["search_products", "get_product"] }
+```
+
+`credentials` is `configured`, `missing` or `unknown`. With `configured`, the server has already
+tried them, so `action` is `check_credentials_or_sign_in`: check the email and password, or run
+`command` in a terminal to sign in once in a visible browser and complete any verification.
 
 Invalid arguments and unknown tools are JSON-RPC errors (`-32602`), not tool results.
 
