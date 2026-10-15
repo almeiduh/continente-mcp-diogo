@@ -35,24 +35,38 @@ export class StorefrontClient {
       return success(lease);
     } catch (error) { return browserFailure(error); }
   }
+  /**
+   * Load a page and wait for a marker only the expected page has. A fresh browser's first visit can
+   * land on an interim page while the website sets up its session, so a page without the marker is
+   * loaded once more; `ready` says whether the marker appeared. `landed` rejects a final URL early.
+   */
+  async readPage(path: string, marker: string, landed?: (url: URL) => ToolError | null): Promise<Result<{ html: string; url: string; ready: boolean }, ToolError>> {
+    for (let attempt = 1; ; attempt++) {
+      const response = await this.navigateToStorefrontPage(path);
+      if (!response.ok) return response;
+      const lease = response.value;
+      const rejected = landed?.(new URL(lease.page.url()));
+      if (rejected) return { ok: false, error: rejected };
+      try {
+        const ready = await this.io(lease, () => lease.page.waitForSelector(marker, { state: 'attached', timeout: requestTimeout(10000) }).then(() => true, () => false));
+        if (ready || attempt === 2) return success({ html: await this.io(lease, () => lease.page.content()), url: lease.page.url(), ready });
+      } catch (error) { return browserFailure(error); }
+    }
+  }
   async html(path: string, marker = 'main, [role="main"], .product-line, a[href*="/produto/"]'): Promise<Result<string, ToolError>> {
-    const response = await this.navigateToStorefrontPage(path);
-    if (!response.ok) return response;
-    try {
-      await this.io(response.value, () => response.value.page.waitForSelector(marker, { state: 'attached', timeout: requestTimeout(10000) }));
-      return success(await this.io(response.value, () => response.value.page.content()));
-    } catch (error) { if (error instanceof RequestStopped) throw error; return failure('upstream_unavailable', 'Page readiness marker was not found'); }
+    const page = await this.readPage(path, marker);
+    if (!page.ok) return page;
+    return page.value.ready ? success(page.value.html) : failure('upstream_unavailable', 'Page readiness marker was not found');
   }
 }
 export class CatalogClient implements CatalogGateway {
   constructor(private readonly site: StorefrontClient) {}
   async fetchProductDetails(reference: string): Promise<Result<{ html: string; url: string }, ToolError>> {
-    const result = await this.site.navigateToStorefrontPage(productPath(reference));
-    if (!result.ok) return result;
-    try {
-      await this.site.io(result.value, () => result.value.page.waitForSelector('h1.product-name, main', { state: 'attached', timeout: requestTimeout(10000) }));
-      return success({ html: await this.site.io(result.value, () => result.value.page.content()), url: result.value.page.url() });
-    } catch (error) { if (error instanceof RequestStopped) throw error; return failure('invalid_data', 'Product detail content is unavailable'); }
+    // The website redirects a product it no longer sells to its home page.
+    const page = await this.site.readPage(productPath(reference), 'h1.product-name, .ct-pdp--prices',
+      url => url.pathname.startsWith('/produto/') ? null : failure('not_found', 'This product is no longer sold on the website').error);
+    if (!page.ok) return page;
+    return page.value.ready ? success({ html: page.value.html, url: page.value.url }) : failure('invalid_data', 'Product detail content is unavailable');
   }
   async searchProducts(query: string, limit: number): Promise<Result<RetrievedPages, ToolError>> {
     const first = await this.site.html(`/pesquisa/?q=${encodeURIComponent(query)}`, '.ct-inner-tile-wrap, .search-noresults-wrapper, .search-no-results, [data-search-empty]');
@@ -176,13 +190,9 @@ export class OrdersClient implements OrdersGateway {
   async fetchOrderHistory(cursor?: string): Promise<Result<string, ToolError>> {
     const path = cursor === undefined ? '/conta/encomendas/' : orderHistoryUrl(cursor);
     if (!path) return failure('invalid_input', 'Invalid order history cursor');
-    const response = await this.site.navigateToStorefrontPage(path);
-    if (!response.ok) return response;
-    const { page } = response.value;
-    try {
-      await this.site.io(response.value, () => page.waitForSelector('main, [role="main"], a[href*="detalhe-encomenda"]', { state: 'attached', timeout: requestTimeout(10000) }));
-      return success(await this.site.io(response.value, () => page.content()));
-    } catch (error) { return browserFailure(error); }
+    // Without the marker the page is still handed to the parser, which says what it does not recognise.
+    const page = await this.site.readPage(path, '.ct-order-history--landing-container, .ct-order-history--order-preview-item');
+    return page.ok ? success(page.value.html) : page;
   }
   async fetchOrderLines(url: string): Promise<Result<string, ToolError>> {
     const href = storefrontUrl(url);

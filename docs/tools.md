@@ -104,9 +104,11 @@ Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `r
 
 Cart quantities are always in `saleUnit`. Products priced per kilogram but sold by the piece
 (fruit, meat, fish) have `saleUnit: "un"` and `storefrontUnit: "kg"`: their minimum, maximum and
-step are whole pieces, and `storefrontUnitsPerSaleUnit` is the approximate weight of one piece. If the website's rules cannot be interpreted
-safely, `saleRules` is `{ "status": "unavailable", "error": ... }` and the result is
-`partial`. Availability reflects the product page, not delivery-slot stock.
+step are whole pieces, and `storefrontUnitsPerSaleUnit` is the approximate weight of one piece.
+If the website's rules cannot be interpreted safely, `saleRules` is
+`{ "status": "unavailable", "error": ... }` and the result is `partial`. Availability reflects
+the product page, not delivery-slot stock. A product the website no longer sells returns
+`not_found`.
 
 ## Favorites
 
@@ -118,6 +120,9 @@ automatically when missing, is marked `stale` after 24 hours, and is replaced wh
 
 `data`: `favorites`, `fetchedAt`, `expiresAt`, `source` (`cache` or `website`), `freshness`
 (`fresh` or `stale`), `cacheState` (`empty` or `populated`), `completeness`.
+
+Favorites can include products the website no longer sells, still with their last price. Check
+with `get_product` before adding one to the cart; it returns `not_found` for those.
 
 ## Cart
 

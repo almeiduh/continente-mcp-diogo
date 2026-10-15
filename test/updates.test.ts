@@ -58,6 +58,18 @@ test('offline, slow or broken lookups never fail and keep the last known answer'
   assert.equal((await checkForUpdate(options(dir, async () => '0.3.1'))).available, false);
 });
 
+test('an answer cached before an upgrade is checked again and never reported below the running version', async t => {
+  const dir = await dataDir(t); let lookups = 0;
+  await writeFile(join(dir, 'update-check.json'), JSON.stringify({ checkedAt: noon.toISOString(), latestVersion: '0.3.0' }));
+  assert.deepEqual(await checkForUpdate(options(dir, async () => { lookups++; return '0.3.1'; })),
+    { currentVersion: '0.3.1', latestVersion: '0.3.1', available: false });
+  assert.equal(lookups, 1);
+  await writeFile(join(dir, 'update-check.json'), JSON.stringify({ checkedAt: noon.toISOString(), latestVersion: '0.3.0' }));
+  assert.deepEqual(await checkForUpdate(options(dir, async () => { throw new Error('offline'); })),
+    { currentVersion: '0.3.1', latestVersion: null, available: false });
+  assert.deepEqual(await checkForUpdate(options(dir, async () => '0.2.0')), { currentVersion: '0.3.1', latestVersion: null, available: false });
+});
+
 test('the check can be turned off', async t => {
   const dir = await dataDir(t); let lookups = 0;
   const result = await checkForUpdate({ ...options(dir, async () => { lookups++; return '9.9.9'; }), enabled: false });

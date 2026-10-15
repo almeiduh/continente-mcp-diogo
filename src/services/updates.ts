@@ -54,14 +54,17 @@ export async function checkForUpdate(options: UpdateCheckOptions): Promise<Updat
   const now = (options.now ?? (() => new Date()))();
   let cached: z.infer<typeof CacheSchema> | null = null;
   try { cached = CacheSchema.parse(JSON.parse(await readFile(file, 'utf8'))); } catch { /* no usable cache */ }
-  let latest = cached?.latestVersion ?? null;
+  // An answer older than the running version predates an upgrade, so it is checked again.
+  const outdated = cached !== null && isNewerRelease(options.currentVersion, cached.latestVersion);
+  let latest = cached && !outdated ? cached.latestVersion : null;
   const age = cached ? now.getTime() - Date.parse(cached.checkedAt) : Infinity;
-  if (!(age >= 0 && age < UPDATE_CHECK_INTERVAL_MS)) {
+  if (outdated || !(age >= 0 && age < UPDATE_CHECK_INTERVAL_MS)) {
     try {
       latest = await withTimeout(signal => (options.fetchLatest ?? registryLatest)(options.packageName, signal), options.timeoutMs ?? 1500);
       await writePrivateJson(file, { checkedAt: now.toISOString(), latestVersion: latest }).catch(() => {});
     } catch { /* offline or slow: keep the last known answer */ }
   }
+  if (latest !== null && isNewerRelease(options.currentVersion, latest)) latest = null;
   return { currentVersion: options.currentVersion, latestVersion: latest, available: latest !== null && isNewerRelease(latest, options.currentVersion) };
 }
 

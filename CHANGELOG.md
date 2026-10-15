@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The first request after the browser started could fail with "The order history page was not recognised", or a search error, while the website was still setting up its session. A page that does not show what it should is now loaded once more.
+- Order dates with abbreviated months, as the website now shows them ("01 Set 26"), are read. They were all `null`.
+- `get_product` reports a product the website no longer sells as `not_found`, instead of `invalid_data`.
+- After an upgrade, the update check no longer reports an older version as the latest one.
+
 ## [0.6.0] - 2026-10-15
 
 ### Changed

@@ -2,7 +2,7 @@ import { ProductIdSchema, parsePriceTag } from '../src/domain/index.js';
 import { present, valueOf, errorOf, fixture, rawCart, unitRules, weightedRules, productForm, cartControls, ordersPage } from '../test-support/helpers.js';
 import { parseProductSearchPage, parseFavoritesPages, parseSearchPagination, rankProductsByFavorites } from '../src/parsers/catalog.js';
 import { parseCartResponse, parseSaleRules, validateSaleQuantity, toStorefrontQuantity, parseProductForm, parseCartControls } from '../src/parsers/cart.js';
-import { parseOrderHistory, parseOrderLines, parseOrderQuantity, aggregatePurchaseFrequency } from '../src/parsers/orders.js';
+import { normalizedDate, parseOrderHistory, parseOrderLines, parseOrderQuantity, aggregatePurchaseFrequency } from '../src/parsers/orders.js';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -137,6 +137,12 @@ test('order parser preserves units and unknown quantities instead of inventing p
   assert.equal(present(valueOf(history).entries[0]).order.date, '2026-10-02');
   assert.equal(present(valueOf(history).entries[0]).order.rawDate, '2 outubro 2026');
   assert.equal(valueOf(history).entries.length, 2);
+});
+test('order dates parse full and abbreviated Portuguese months, and nothing else', () => {
+  const cases: [string, string | null][] = [['2 outubro 2026', '2026-10-02'], ['2 de outubro de 2026', '2026-10-02'], ['01 Set 26', '2026-09-01'],
+    ['07 Mai 26', '2026-05-07'], ['15 Mar. 26', '2026-03-15'], ['31 Dez 25', '2025-12-31'], ['31 Fev 26', null], ['01 Sep 26', null],
+    ['01 Se 26', null], ['01 Set 2026x', null], ['Tomorrow?', null]];
+  for (const [raw, expected] of cases) assert.equal(normalizedDate(raw), expected, raw);
 });
 test('purchase frequency counts distinct orders and keeps units separate', () => {
   const lines = valueOf(parseOrderLines(fixture('order')));

@@ -41,11 +41,14 @@ export function orderHistoryUrl(value: string): string | null {
   const href = storefrontUrl(value);
   return href && new URL(href).pathname === '/conta/encomendas/' ? href : null;
 }
-function normalizedDate(raw: string): string | null {
-  const match = raw.trim().toLowerCase().match(/^(\d{1,2})\s+(?:de\s+)?([a-zç]+)\s+(?:de\s+)?(\d{4})$/);
+const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+/** "2 outubro 2026", "2 de outubro de 2026" or the abbreviated "01 Set 26"; anything else stays unparsed. */
+export function normalizedDate(raw: string): string | null {
+  const match = raw.trim().toLowerCase().match(/^(\d{1,2})\s+(?:de\s+)?([a-zç]+)\.?\s+(?:de\s+)?(\d{4}|\d{2})$/);
   if (!match) return null;
-  const month = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'].indexOf(match[2]!);
-  const day = Number(match[1]); const year = Number(match[3]);
+  const name = match[2]!;
+  const month = MONTHS.findIndex(full => full === name || (name.length === 3 && full.startsWith(name)));
+  const day = Number(match[1]); const year = match[3]!.length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
   const date = new Date(Date.UTC(year, month, day));
   return month >= 0 && date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day ? date.toISOString().slice(0, 10) : null;
 }
