@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-16
+
 ### Added
 
 - `clear_cart` empties the whole cart in one step with the website's own "remove all" action, instead of removing lines one by one, and confirms that no product lines remain. It needs `confirm: true`, does not write to an empty cart, and reports an unknown outcome, never retried, when the result cannot be confirmed.
@@ -137,7 +139,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/andredelgado/continente-mcp/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/andredelgado/continente-mcp/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...v0.6.1
