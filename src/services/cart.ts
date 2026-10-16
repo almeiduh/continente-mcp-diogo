@@ -70,8 +70,7 @@ export class CartService {
     }
     const confirmed: CartMutationResult = { outcome: 'confirmed', productId, requested,
       confirmedQuantity: { value: actual, unit: requested.unit },
-      ...(requireAbsence ? { disposition: 'removed' as const } : {}),
-      ...(cartItemId ? { cartItemId: CartItemIdSchema.parse(cartItemId) } : {}) };
+      disposition: requireAbsence ? 'removed' : null, cartItemId: cartItemId ? CartItemIdSchema.parse(cartItemId) : null };
     return success(confirmed);
   }
   /** Set an absolute quantity. A product that is not in the cart is added; zero removes it. */
@@ -134,7 +133,7 @@ export class CartService {
     if (!selected.value) {
       if (cartItemId && before.value.items.some(item => item.cartItemId === cartItemId)) return failure('invalid_input', 'cartItemId belongs to another product');
       if (value === 0) return success({ outcome: 'confirmed', disposition: 'already_absent', productId: ref.value.productId,
-        requested: { value: 0, unit: 'un' }, confirmedQuantity: { value: 0, unit: 'un' }, ...(cartItemId ? { cartItemId: CartItemIdSchema.parse(cartItemId) } : {}) });
+        requested: { value: 0, unit: 'un' }, confirmedQuantity: { value: 0, unit: 'un' }, cartItemId: cartItemId ? CartItemIdSchema.parse(cartItemId) : null });
       if (cartItemId) return failure('not_found', 'No cart line has this cartItemId. Use get_cart to read current lines.');
       return addIfAbsent ? this.addQuantity(reference, value) : failure('not_found', 'The product is not in the cart.');
     }
@@ -158,7 +157,7 @@ export class CartService {
     const current = observedCartQuantity(before.value, productId, lineId);
     if (current !== null && Math.abs(current - value) <= 0.0005) {
       return success({ outcome: 'confirmed', productId, requested: requested.value, confirmedQuantity: { value: current, unit: requested.value.unit },
-        ...(lineId ? { cartItemId: CartItemIdSchema.parse(lineId) } : {}) });
+        disposition: null, cartItemId: lineId ? CartItemIdSchema.parse(lineId) : null });
     }
     if (!data.action || !data.uuid) return failure('invalid_data', 'The cart page has no quantity control for this line');
     const params = new URLSearchParams({ pid: productId, quantity: toStorefrontQuantity(requested.value, sale.value),

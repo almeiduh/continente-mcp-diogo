@@ -69,10 +69,11 @@ export const ErrorResultSchema = z.strictObject({ status: z.literal('error'), er
   signIn: SignInRecoverySchema.optional(),
 });
 export const ExecutionErrorSchema = z.strictObject({ result: ErrorResultSchema });
-export function outputSchema<T extends z.ZodType>(data: T, extra: z.ZodRawShape = {}) {
+/** The result envelope: data with its status, or an error. `errorDetails` are extra fields one tool's errors carry. */
+export function outputSchema<T extends z.ZodType>(data: T, errorDetails: z.ZodRawShape = {}) {
   return z.strictObject({ result: z.union([
-    z.strictObject({ status: z.enum(['success', 'empty', 'partial']), data }), ErrorResultSchema,
-  ]), ...extra });
+    z.strictObject({ status: z.enum(['success', 'empty', 'partial']), data }), ErrorResultSchema.safeExtend(errorDetails),
+  ]) });
 }
 const integer = z.number().int().nonnegative();
 /** When the website was read; prices and availability can change after it. */
@@ -90,21 +91,22 @@ export const SearchData = z.strictObject({ ...observed, ...viewed, products: z.a
 export const FavoritesData = z.strictObject({ favorites: z.array(FavoriteProductSchema), fetchedAt: z.iso.datetime({ offset: true }), completeness: z.enum(['complete', 'unknown']),
   source: z.enum(['cache', 'website']), freshness: z.enum(['fresh', 'stale']), expiresAt: z.iso.datetime({ offset: true }), cacheState: z.enum(['empty', 'populated']) });
 const ScanFailure = z.strictObject({ stage: z.enum(['listing', 'detail']), orderId: OrderSchema.shape.orderId, orderNumber: OrderSchema.shape.orderNumber, error: ToolErrorSchema });
-export const OrdersData = z.strictObject({ orders: z.array(OrderSchema), completeness: z.enum(['complete', 'partial', 'unknown']), failures: z.array(ToolErrorSchema), nextCursor: z.string().nullable(),
-  hasMore: z.boolean().nullable(), detailBudget: integer, detailsRead: integer, scanFailures: z.array(ScanFailure) });
-export const FrequencyData = z.strictObject({ products: z.array(PurchaseFrequencySchema), listed: integer, scanned: integer, succeeded: integer, failed: integer, unscanned: integer,
-  unknownQuantityLines: integer, failures: z.array(ScanFailure), completeness: z.enum(['complete', 'partial', 'unknown']), nextCursor: z.string().nullable() });
+export const OrdersData = z.strictObject({ ...observed, orders: z.array(OrderSchema), completeness: z.enum(['complete', 'partial', 'unknown']), failures: z.array(ScanFailure), nextCursor: z.string().nullable(),
+  hasMore: z.boolean().nullable(), detailBudget: integer, detailsRead: integer });
+export const FrequencyData = z.strictObject({ ...observed, products: z.array(PurchaseFrequencySchema), listed: integer, scanned: integer, succeeded: integer, failed: integer, unscanned: integer,
+  unknownQuantityLines: integer, failures: z.array(ScanFailure), completeness: z.enum(['complete', 'partial', 'unknown']) });
 export const SearchOutput = outputSchema(SearchData);
 export const FavoritesOutput = outputSchema(FavoritesData);
 export const CartData = CartSchema.safeExtend(observed);
 export const PreviewData = BasketPreviewSchema.safeExtend({ ...observed, ...viewed });
 export const PreviewOutput = outputSchema(PreviewData);
 export const CartOutput = outputSchema(CartData);
-const ConfirmedMutationData = CartMutationResultSchema.options[0].refine(value => value.requested.unit === value.confirmedQuantity.unit);
-export const MutationOutput = outputSchema(ConfirmedMutationData);
-export const ClearCartOutput = outputSchema(ClearCartResultSchema.options[0]);
+export const MutationData = CartMutationResultSchema.options[0].safeExtend(observed).refine(value => value.requested.unit === value.confirmedQuantity.unit);
+export const MutationOutput = outputSchema(MutationData);
+export const ClearCartOutput = outputSchema(ClearCartResultSchema.options[0].safeExtend(observed));
 export const OrdersOutput = outputSchema(OrdersData);
-export const SingleOrderOutput = outputSchema(z.strictObject({ order: OrderSchema, unknownQuantityLines: integer }));
+export const SingleOrderOutput = outputSchema(z.strictObject({ ...observed, order: OrderSchema, unknownQuantityLines: integer }));
+/** When no order detail could be read, the error carries the scan's statistics in `scan`. */
 export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData.optional() });
 export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ favorites: FavoritesStatusSchema, update: UpdateStatusSchema }));
 

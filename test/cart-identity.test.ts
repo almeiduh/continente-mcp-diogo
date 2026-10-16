@@ -3,7 +3,7 @@ import { having, mutationOf, dataOf } from '../test-support/assertions.js';
 
 import type { CartGateway } from '../src/ports.js';
 
-import { CartMutationResultSchema } from '../src/domain/index.js';
+import { MutationData } from '../src/mcp/contracts.js';
 import { CartService } from '../src/services/cart.js';
 import { parseCartResponse } from '../src/parsers/cart.js';
 import { connect, injectedServices } from '../test-support/mcp-fixture.js';
@@ -89,6 +89,6 @@ test('MCP mutations expose line selection and reject ambiguous product-only requ
   const rejected = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: '00123', quantity: 3 } });
   assert.equal(mutationOf(rejected).outcome, 'not_applied');
   const result = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: '00123', cartItemId: 'second', quantity: 3 } });
-  assert.equal(dataOf(result, CartMutationResultSchema.options[0]).cartItemId, 'second');
+  assert.equal(dataOf(result, MutationData).cartItemId, 'second');
   assert.equal(s.writes.length, 1);
 });

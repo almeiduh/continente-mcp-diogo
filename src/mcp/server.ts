@@ -124,7 +124,9 @@ export class ContinenteMcpServer {
     if (handler.outputSchema) {
       const validated = handler.outputSchema.safeParse(result.structuredContent);
       if (!validated.success) return this.executionError('invalid_result', handler.cartMutation === true);
-      const failed = ExecutionErrorSchema.safeParse({ result: structuredResult(result) }).success;
+      // The tool's own schema has checked the envelope, including error details such as a scan's
+      // statistics; here the status only has to agree with isError.
+      const failed = structuredResult(result)?.status === 'error';
       if (failed !== (result.isError === true)) return this.executionError('invalid_result', handler.cartMutation === true);
     }
     return result;

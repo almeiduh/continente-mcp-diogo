@@ -51,7 +51,7 @@ test('quantities require explicit known units and retain unknown observations wi
   for (const input of [{ value: -1, unit: 'un' }, { value: NaN, unit: 'un' }, { value: Infinity, unit: 'kg' }, { value: 1 }, { value: '1', unit: 'un' }, { value: 1, unit: 'box' }] as const) {
     assert.equal(parseValue(QuantitySchema, input, 'quantity').ok, false);
   }
-  const unknown = { status: 'unknown', value: null, rawText: 'unreadable quantity' };
+  const unknown = { status: 'unknown', value: null, rawText: 'unreadable quantity', reason: null };
   assert.deepEqual(ObservedQuantitySchema.parse(unknown), unknown);
   assert.equal(ObservedQuantitySchema.safeParse({ ...unknown, quantity }).success, false);
   assert.equal(ObservedQuantitySchema.safeParse({ status: 'known' }).success, false);
@@ -71,7 +71,7 @@ test('sale-rule models reject contradictory units, bounds and conversions', () =
 
 test('cart outcomes prevent contradictory confirmation, failure and automatic replay', () => {
   const base = { productId: '00123', requested: quantity };
-  const confirmed = { ...base, outcome: 'confirmed', confirmedQuantity: { value: 6, unit: 'un' } };
+  const confirmed = { ...base, outcome: 'confirmed', confirmedQuantity: { value: 6, unit: 'un' }, cartItemId: null, disposition: null };
   const notApplied = { ...base, outcome: 'not_applied', error: failure };
   const unknown = { ...base, outcome: 'unknown', error: failure, recovery: { action: 'get_cart', automaticReplay: false } };
   for (const input of [confirmed, notApplied, unknown] as const) assert.equal(CartMutationResultSchema.safeParse(input).success, true);
@@ -91,7 +91,7 @@ test('cart models preserve unknown prices and unresolved quantity units', () => 
   const cart = {
     customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, checkout: { minimumOrder: null, meetsMinimum: null, entregaZero: null, freeDeliveryFrom: null, deliveryFee: 'set_at_checkout' }, items: [{
       productId: '00123', cartItemId: null, name: 'Milk', kind: 'product', storefrontQuantity: null,
-      quantity: { status: 'unknown', value: 2, rawText: null },
+      quantity: { status: 'unknown', value: 2, rawText: null, reason: null },
       price: null, lineTotal: null, estimated: false, promotions: [], lineTotalBeforeDiscount: null,
     }],
   };
@@ -140,10 +140,10 @@ test('validation failures expose paths and codes without copying upstream values
 });
 
 test('history models retain unavailable lines and separate totals by unit', () => {
-  const order = { orderId: 'internal-id', orderNumber: '123456789_001', date: null, lines: { status: 'unavailable', error: failure } };
+  const order = { orderId: 'internal-id', orderNumber: '123456789_001', date: null, rawDate: null, lines: { status: 'unavailable', error: failure } };
   assert.deepEqual(OrderSchema.parse(order), order);
   assert.equal(OrderSchema.safeParse({ ...order, lines: { status: 'unavailable', items: [] } }).success, false);
-  const frequency = { productId: null, identityBasis: 'name', name: 'Bananas', orders: 2, quantities: [{ value: 3, unit: 'un' }, { value: 1.2, unit: 'kg' }] };
+  const frequency = { productId: null, identityBasis: 'name', name: 'Bananas', orders: 2, quantities: [{ value: 3, unit: 'un' }, { value: 1.2, unit: 'kg' }], unknownQuantityLines: 0 };
   assert.equal(PurchaseFrequencySchema.safeParse(frequency).success, true);
   assert.equal(PurchaseFrequencySchema.safeParse({ ...frequency, identityBasis: 'product' }).success, false);
   assert.equal(PurchaseFrequencySchema.safeParse({ ...frequency, quantities: [quantity, quantity] }).success, false);

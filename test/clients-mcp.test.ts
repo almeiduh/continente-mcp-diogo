@@ -1,7 +1,8 @@
 import { validatorSchema, having, double, dataOf, textOf, statusOf, mutationOf, recoveryOf, toolError } from '../test-support/assertions.js';
 import { present, valueOf, errorOf, fixture, rawCart, ordersPage, ok, fail, unitRules } from '../test-support/helpers.js';
 import { CartData, FrequencyData, SearchData, CartOutput } from '../src/mcp/contracts.js';
-import { ProductIdSchema, CartMutationResultSchema } from '../src/domain/index.js';
+import { ProductIdSchema } from '../src/domain/index.js';
+import { MutationData } from '../src/mcp/contracts.js';
 import type { StorefrontSession } from '../src/session/browser.js';
 import { injectedServices, connect } from '../test-support/mcp-fixture.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
@@ -31,10 +32,10 @@ test('shopping tools work through real MCP transport using injected clients', as
   assert.deepEqual(Object.keys(present(cart.structuredContent)), ['result']);
   const add = await client.callTool({ name: 'add_cart_item', arguments: { productId: ProductIdSchema.parse('00123') } });
   assert.equal(statusOf(add), 'success');
-  assert.equal(dataOf(add, CartMutationResultSchema.options[0]).productId, '00123');
+  assert.equal(dataOf(add, MutationData).productId, '00123');
   assert.deepEqual(Object.keys(present(add.structuredContent)), ['result']);
-  assert.equal(dataOf(add, CartMutationResultSchema.options[0]).confirmedQuantity.value, 3);
-  assert.equal(dataOf((await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 0 } })), CartMutationResultSchema.options[0]).confirmedQuantity.value, 0);
+  assert.equal(dataOf(add, MutationData).confirmedQuantity.value, 3);
+  assert.equal(dataOf((await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 0 } })), MutationData).confirmedQuantity.value, 0);
   assert.match(textOf((await client.callTool({ name: 'list_orders' }))), /2 un × Leite Meio Gordo/);
   assert.match(textOf((await client.callTool({ name: 'list_frequently_bought_products' }))), /across 2 orders/);
   assert.equal(state.writes, 2);
@@ -85,7 +86,7 @@ test('discovery schemas describe strict inputs, defaults, outputs and operation 
     for (const key of ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'] as const) assert.equal(typeof present(tool.annotations)[key], 'boolean');
     const args = tool.name === 'search_products' ? { query: 'milk' } : ['add_cart_item', 'set_cart_item_quantity'].includes(tool.name) ? { productId: ProductIdSchema.parse('00123'), quantity: 1 } :
       ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: ProductIdSchema.parse('00123') } : tool.name === 'get_order' ? { orderId: 'first' } :
-      tool.name === 'preview_basket' ? { items: [{ productId: '00123', quantity: 1 }] } :
+      tool.name === 'preview_cart_changes' ? { items: [{ productId: '00123', quantity: 1 }] } :
       tool.name === 'get_product_labels' ? { productIds: ['00123'] } :
       tool.name === 'clear_cart' ? { confirm: true } :
       tool.name === 'choose_products' ? { decisions: [{ question: 'Milk', productIds: ['00123', '00123'] }] } : {};
@@ -125,7 +126,7 @@ test('empty and partial results agree with text and retain data and failure coun
   services.orders.listOrders = async () => ok({ items: [], failures: [fail().error], completeness: 'partial', nextCursor: null, hasMore: null, detailBudget: 5, detailsRead: 0, scanFailures: [] });
   const orders = await client.callTool({ name: 'list_orders' });
   assert.equal(statusOf(orders), 'partial'); assert.match(textOf(orders), /Partial results/);
-  services.history.listFrequentlyBoughtProducts = async () => ok({ products: [], listed: 2, scanned: 2, succeeded: 1, failed: 1, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'partial', nextCursor: null });
+  services.history.listFrequentlyBoughtProducts = async () => ok({ products: [], listed: 2, scanned: 2, succeeded: 1, failed: 1, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'partial' });
   const frequency = await client.callTool({ name: 'list_frequently_bought_products' });
   assert.equal(statusOf(frequency), 'partial'); assert.match(textOf(frequency), /1 of 2 orders/);
   services.cart.getCart = async () => ok({ customerAuthenticated: true, items: [], totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, checkout: { minimumOrder: null, meetsMinimum: null, entregaZero: null, freeDeliveryFrom: null, deliveryFee: 'set_at_checkout' } });
@@ -169,32 +170,32 @@ test('cart tools preserve incremental, absolute and removal semantics', async t 
   const { state, services } = injectedServices(); const { client } = await connect(t, services);
   const add = await client.callTool({ name: 'add_cart_item', arguments: { productId: 'leite-00123.html' } });
   assert.deepEqual(Object.keys(present(add.structuredContent)), ['result']);
-  assert.equal(dataOf(add, CartMutationResultSchema.options[0]).productId, '00123');
-  assert.equal(dataOf(add, CartMutationResultSchema.options[0]).requested.value, 1);
-  assert.equal(dataOf(add, CartMutationResultSchema.options[0]).confirmedQuantity.value, 3);
+  assert.equal(dataOf(add, MutationData).productId, '00123');
+  assert.equal(dataOf(add, MutationData).requested.value, 1);
+  assert.equal(dataOf(add, MutationData).confirmedQuantity.value, 3);
   assert.match(textOf(add), /Added 1 un of product 00123/);
   assert.match(textOf(add), /The cart now holds 3 un/);
   const set = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 2 } });
-  assert.equal(dataOf(set, CartMutationResultSchema.options[0]).confirmedQuantity.value, 2);
+  assert.equal(dataOf(set, MutationData).confirmedQuantity.value, 2);
   assert.match(textOf(set), /Set the quantity to 2 un/);
   const cart = await client.callTool({ name: 'get_cart' });
   assert.deepEqual(Object.keys(present(cart.structuredContent)), ['result']);
   assert.equal(having(present(dataOf(cart, CartData).items[0]).quantity, 'value').value, 2);
   const removed = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 0 } });
-  assert.equal(dataOf(removed, CartMutationResultSchema.options[0]).confirmedQuantity.value, 0);
+  assert.equal(dataOf(removed, MutationData).confirmedQuantity.value, 0);
   assert.equal(state.quantity, 0); assert.equal(state.writes, 3);
   const added = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 2 } });
-  assert.equal(dataOf(added, CartMutationResultSchema.options[0]).confirmedQuantity.value, 2);
+  assert.equal(dataOf(added, MutationData).confirmedQuantity.value, 2);
   assert.equal(state.quantity, 2); assert.equal(state.writes, 4);
   const repeated = await client.callTool({ name: 'set_cart_item_quantity', arguments: { productId: ProductIdSchema.parse('00123'), quantity: 2 } });
-  assert.equal(dataOf(repeated, CartMutationResultSchema.options[0]).confirmedQuantity.value, 2); assert.equal(state.writes, 4);
+  assert.equal(dataOf(repeated, MutationData).confirmedQuantity.value, 2); assert.equal(state.writes, 4);
 });
 test('frequency orderLimit and result limit are independent', async t => {
   const { services } = injectedServices(); const calls: number[] = [];
   services.history.listFrequentlyBoughtProducts = async orderLimit => {
     calls.push(orderLimit);
     return ok({ products: Array.from({ length: 30 }, (_, i) => ({ productId: ProductIdSchema.parse(String(i)), identityBasis: 'product', name: `Product ${i}`,
-      orders: 1, quantities: [{ value: 1, unit: 'un' }] })), listed: orderLimit, scanned: orderLimit, succeeded: orderLimit, failed: 0, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'unknown', nextCursor: null });
+      orders: 1, quantities: [{ value: 1, unit: 'un' }], unknownQuantityLines: 0 })), listed: orderLimit, scanned: orderLimit, succeeded: orderLimit, failed: 0, unscanned: 0, unknownQuantityLines: 0, failures: [], completeness: 'unknown' });
   };
   const { client } = await connect(t, services);
   for (const [name, args, expectedScan, expectedResults] of [

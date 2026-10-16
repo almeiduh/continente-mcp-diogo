@@ -115,24 +115,46 @@
                         "additionalProperties": false
                       },
                       "cartItemId": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200,
-                        "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "disposition": {
-                        "type": "string",
-                        "enum": [
-                          "removed",
-                          "already_absent"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "removed",
+                              "already_absent"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "productId",
                       "requested",
                       "outcome",
-                      "confirmedQuantity"
+                      "confirmedQuantity",
+                      "cartItemId",
+                      "disposition",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -1009,12 +1031,18 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 9007199254740991
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "outcome",
                       "disposition",
-                      "removedLines"
+                      "removedLines",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -1390,19 +1418,27 @@
                                       ]
                                     },
                                     "reason": {
-                                      "type": "string",
-                                      "enum": [
-                                        "missing",
-                                        "unsupported_unit",
-                                        "unrecognized_format",
-                                        "invalid_value"
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "missing",
+                                            "unsupported_unit",
+                                            "unrecognized_format",
+                                            "invalid_value"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
                                       ]
                                     }
                                   },
                                   "required": [
                                     "status",
                                     "value",
-                                    "rawText"
+                                    "rawText",
+                                    "reason"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -2303,6 +2339,11 @@
                   "data": {
                     "type": "object",
                     "properties": {
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
                       "order": {
                         "type": "object",
                         "properties": {
@@ -2440,19 +2481,27 @@
                                                   ]
                                                 },
                                                 "reason": {
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "missing",
-                                                    "unsupported_unit",
-                                                    "unrecognized_format",
-                                                    "invalid_value"
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "missing",
+                                                        "unsupported_unit",
+                                                        "unrecognized_format",
+                                                        "invalid_value"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
                                                   ]
                                                 }
                                               },
                                               "required": [
                                                 "status",
                                                 "value",
-                                                "rawText"
+                                                "rawText",
+                                                "reason"
                                               ],
                                               "additionalProperties": false
                                             }
@@ -2566,6 +2615,7 @@
                           "orderId",
                           "orderNumber",
                           "date",
+                          "rawDate",
                           "lines"
                         ],
                         "additionalProperties": false
@@ -2577,6 +2627,7 @@
                       }
                     },
                     "required": [
+                      "observedAt",
                       "order",
                       "unknownQuantityLines"
                     ],
@@ -5470,6 +5521,11 @@
                   "data": {
                     "type": "object",
                     "properties": {
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
                       "products": {
                         "type": "array",
                         "items": {
@@ -5542,7 +5598,8 @@
                             "identityBasis",
                             "name",
                             "quantities",
-                            "orders"
+                            "orders",
+                            "unknownQuantityLines"
                           ],
                           "additionalProperties": false
                         }
@@ -5690,15 +5747,10 @@
                           "partial",
                           "unknown"
                         ]
-                      },
-                      "nextCursor": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
                       }
                     },
                     "required": [
+                      "observedAt",
                       "products",
                       "listed",
                       "scanned",
@@ -5707,8 +5759,7 @@
                       "unscanned",
                       "unknownQuantityLines",
                       "failures",
-                      "completeness",
-                      "nextCursor"
+                      "completeness"
                     ],
                     "additionalProperties": false
                   }
@@ -5928,6 +5979,251 @@
                       "publicTools"
                     ],
                     "additionalProperties": false
+                  },
+                  "scan": {
+                    "type": "object",
+                    "properties": {
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "products": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "productId": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^\\d+$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "identityBasis": {
+                              "type": "string",
+                              "enum": [
+                                "product",
+                                "name"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "quantities": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "value": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "enum": [
+                                      "un",
+                                      "kg",
+                                      "g",
+                                      "l",
+                                      "ml"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "value",
+                                  "unit"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "orders": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "unknownQuantityLines": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "productId",
+                            "identityBasis",
+                            "name",
+                            "quantities",
+                            "orders",
+                            "unknownQuantityLines"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "listed": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "scanned": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "succeeded": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "failed": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "unscanned": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "unknownQuantityLines": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "failures": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "stage": {
+                              "type": "string",
+                              "enum": [
+                                "listing",
+                                "detail"
+                              ]
+                            },
+                            "orderId": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "orderNumber": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "error": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string",
+                                  "enum": [
+                                    "invalid_data",
+                                    "invalid_input",
+                                    "not_authenticated",
+                                    "upstream_unavailable",
+                                    "not_found",
+                                    "sale_rules_unknown",
+                                    "quantity_below_minimum",
+                                    "cart_change_rejected",
+                                    "cart_change_unconfirmed",
+                                    "cache_unavailable",
+                                    "order_details_unavailable",
+                                    "cancelled",
+                                    "deadline_exceeded",
+                                    "server_closed",
+                                    "queue_full",
+                                    "browser_unavailable"
+                                  ]
+                                },
+                                "message": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "issues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "path",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "code",
+                                "message",
+                                "retryable"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "stage",
+                            "orderId",
+                            "orderNumber",
+                            "error"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "completeness": {
+                        "type": "string",
+                        "enum": [
+                          "complete",
+                          "partial",
+                          "unknown"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "observedAt",
+                      "products",
+                      "listed",
+                      "scanned",
+                      "succeeded",
+                      "failed",
+                      "unscanned",
+                      "unknownQuantityLines",
+                      "failures",
+                      "completeness"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5937,251 +6233,6 @@
                 "additionalProperties": false
               }
             ]
-          },
-          "scan": {
-            "type": "object",
-            "properties": {
-              "products": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "productId": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "pattern": "^\\d+$"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "identityBasis": {
-                      "type": "string",
-                      "enum": [
-                        "product",
-                        "name"
-                      ]
-                    },
-                    "name": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "quantities": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "value": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "unit": {
-                            "type": "string",
-                            "enum": [
-                              "un",
-                              "kg",
-                              "g",
-                              "l",
-                              "ml"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "value",
-                          "unit"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "orders": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "unknownQuantityLines": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    }
-                  },
-                  "required": [
-                    "productId",
-                    "identityBasis",
-                    "name",
-                    "quantities",
-                    "orders"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "listed": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "scanned": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "succeeded": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "failed": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "unscanned": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "unknownQuantityLines": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "failures": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "stage": {
-                      "type": "string",
-                      "enum": [
-                        "listing",
-                        "detail"
-                      ]
-                    },
-                    "orderId": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "orderNumber": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "invalid_data",
-                            "invalid_input",
-                            "not_authenticated",
-                            "upstream_unavailable",
-                            "not_found",
-                            "sale_rules_unknown",
-                            "quantity_below_minimum",
-                            "cart_change_rejected",
-                            "cart_change_unconfirmed",
-                            "cache_unavailable",
-                            "order_details_unavailable",
-                            "cancelled",
-                            "deadline_exceeded",
-                            "server_closed",
-                            "queue_full",
-                            "browser_unavailable"
-                          ]
-                        },
-                        "message": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "retryable": {
-                          "type": "boolean"
-                        },
-                        "issues": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "path": {
-                                "type": "string"
-                              },
-                              "code": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "path",
-                              "code"
-                            ],
-                            "additionalProperties": false
-                          }
-                        }
-                      },
-                      "required": [
-                        "code",
-                        "message",
-                        "retryable"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "stage",
-                    "orderId",
-                    "orderNumber",
-                    "error"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "completeness": {
-                "type": "string",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unknown"
-                ]
-              },
-              "nextCursor": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "products",
-              "listed",
-              "scanned",
-              "succeeded",
-              "failed",
-              "unscanned",
-              "unknownQuantityLines",
-              "failures",
-              "completeness",
-              "nextCursor"
-            ],
-            "additionalProperties": false
           }
         },
         "required": [
@@ -6247,6 +6298,11 @@
                   "data": {
                     "type": "object",
                     "properties": {
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
                       "orders": {
                         "type": "array",
                         "items": {
@@ -6386,19 +6442,27 @@
                                                     ]
                                                   },
                                                   "reason": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "missing",
-                                                      "unsupported_unit",
-                                                      "unrecognized_format",
-                                                      "invalid_value"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "missing",
+                                                          "unsupported_unit",
+                                                          "unrecognized_format",
+                                                          "invalid_value"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
                                                     ]
                                                   }
                                                 },
                                                 "required": [
                                                   "status",
                                                   "value",
-                                                  "rawText"
+                                                  "rawText",
+                                                  "reason"
                                                 ],
                                                 "additionalProperties": false
                                               }
@@ -6512,6 +6576,7 @@
                             "orderId",
                             "orderNumber",
                             "date",
+                            "rawDate",
                             "lines"
                           ],
                           "additionalProperties": false
@@ -6526,89 +6591,6 @@
                         ]
                       },
                       "failures": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "code": {
-                              "type": "string",
-                              "enum": [
-                                "invalid_data",
-                                "invalid_input",
-                                "not_authenticated",
-                                "upstream_unavailable",
-                                "not_found",
-                                "sale_rules_unknown",
-                                "quantity_below_minimum",
-                                "cart_change_rejected",
-                                "cart_change_unconfirmed",
-                                "cache_unavailable",
-                                "order_details_unavailable",
-                                "cancelled",
-                                "deadline_exceeded",
-                                "server_closed",
-                                "queue_full",
-                                "browser_unavailable"
-                              ]
-                            },
-                            "message": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "retryable": {
-                              "type": "boolean"
-                            },
-                            "issues": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "path": {
-                                    "type": "string"
-                                  },
-                                  "code": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "path",
-                                  "code"
-                                ],
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "required": [
-                            "code",
-                            "message",
-                            "retryable"
-                          ],
-                          "additionalProperties": false
-                        }
-                      },
-                      "nextCursor": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "hasMore": {
-                        "type": [
-                          "boolean",
-                          "null"
-                        ]
-                      },
-                      "detailBudget": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                      },
-                      "detailsRead": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                      },
-                      "scanFailures": {
                         "type": "array",
                         "items": {
                           "type": "object",
@@ -6713,17 +6695,39 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "nextCursor": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "hasMore": {
+                        "type": [
+                          "boolean",
+                          "null"
+                        ]
+                      },
+                      "detailBudget": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "detailsRead": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
                       }
                     },
                     "required": [
+                      "observedAt",
                       "orders",
                       "completeness",
                       "failures",
                       "nextCursor",
                       "hasMore",
                       "detailBudget",
-                      "detailsRead",
-                      "scanFailures"
+                      "detailsRead"
                     ],
                     "additionalProperties": false
                   }
@@ -6962,8 +6966,8 @@
       }
     },
     {
-      "name": "preview_basket",
-      "title": "Preview basket",
+      "name": "preview_cart_changes",
+      "title": "Preview cart changes",
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -7188,19 +7192,27 @@
                                       ]
                                     },
                                     "reason": {
-                                      "type": "string",
-                                      "enum": [
-                                        "missing",
-                                        "unsupported_unit",
-                                        "unrecognized_format",
-                                        "invalid_value"
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "missing",
+                                            "unsupported_unit",
+                                            "unrecognized_format",
+                                            "invalid_value"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
                                       ]
                                     }
                                   },
                                   "required": [
                                     "status",
                                     "value",
-                                    "rawText"
+                                    "rawText",
+                                    "reason"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -8184,24 +8196,46 @@
                         "additionalProperties": false
                       },
                       "cartItemId": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200,
-                        "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "disposition": {
-                        "type": "string",
-                        "enum": [
-                          "removed",
-                          "already_absent"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "removed",
+                              "already_absent"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "productId",
                       "requested",
                       "outcome",
-                      "confirmedQuantity"
+                      "confirmedQuantity",
+                      "cartItemId",
+                      "disposition",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -9649,24 +9683,46 @@
                         "additionalProperties": false
                       },
                       "cartItemId": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200,
-                        "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[^\\s\\x00-\\x1f\\x7f]+$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "disposition": {
-                        "type": "string",
-                        "enum": [
-                          "removed",
-                          "already_absent"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "removed",
+                              "already_absent"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "productId",
                       "requested",
                       "outcome",
-                      "confirmedQuantity"
+                      "confirmedQuantity",
+                      "cartItemId",
+                      "disposition",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }

@@ -74,7 +74,8 @@ test('complete empty history, empty orders, and unreadable detail scans have dif
   assert.equal(statusOf(result), 'empty'); assert.equal(dataOf(result, FrequencyData).succeeded, 1);
   mode = 'unreadable'; result = await client.callTool({ name: 'list_frequently_bought_products' });
   assert.equal(result.isError, true); assert.equal(toolError(result).code, 'order_details_unavailable');
-  assert.equal(present(z.object({ scan: FrequencyData }).parse(result.structuredContent).scan).failed, 1); assert.equal(present(present(z.object({ scan: FrequencyData }).parse(result.structuredContent).scan).failures[0]).stage, 'detail');
+  const scan = z.object({ result: z.object({ status: z.literal('error'), scan: FrequencyData }) }).parse(result.structuredContent).result.scan;
+  assert.equal(scan.failed, 1); assert.equal(present(scan.failures[0]).stage, 'detail');
   const summaries = await client.callTool({ name: 'list_orders', arguments: { includeLines: false } });
   assert.equal(dataOf(summaries, OrdersData).detailBudget, 0); assert.equal(present(dataOf(summaries, OrdersData).orders[0]).lines.status, 'not_requested');
 });

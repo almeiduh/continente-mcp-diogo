@@ -151,7 +151,7 @@ export class OrderService {
 }
 export interface FrequencyResult {
   products: PurchaseFrequency[]; listed: number; scanned: number; succeeded: number; failed: number; unscanned: number;
-  unknownQuantityLines: number; failures: ScanFailure[]; completeness: 'complete' | 'partial' | 'unknown'; nextCursor: string | null;
+  unknownQuantityLines: number; failures: ScanFailure[]; completeness: 'complete' | 'partial' | 'unknown';
 }
 export class PurchaseHistoryService {
   constructor(private readonly client: OrdersGateway, private readonly settled?: SettledOrders) {}
@@ -162,9 +162,9 @@ export class PurchaseHistoryService {
     const unavailable = page.items.filter(order => order.lines.status === 'unavailable');
     const unscanned = unavailable.filter(order => order.lines.status === 'unavailable' && ['cancelled', 'deadline_exceeded', 'server_closed'].includes(order.lines.error.code)).length;
     const aggregate = aggregatePurchaseFrequency(known); if (!aggregate.ok) return aggregate;
-    const unknownQuantityLines = aggregate.value.reduce((total, product) => total + (product.unknownQuantityLines ?? 0), 0);
+    const unknownQuantityLines = aggregate.value.reduce((total, product) => total + product.unknownQuantityLines, 0);
     return success({ products: aggregate.value, listed: page.items.length, scanned: page.items.length - unscanned, succeeded: known.length,
       failed: unavailable.length - unscanned, unscanned, unknownQuantityLines, failures: page.scanFailures,
-      completeness: unknownQuantityLines ? 'partial' : page.completeness, nextCursor: page.nextCursor });
+      completeness: unknownQuantityLines ? 'partial' : page.completeness });
   }
 }

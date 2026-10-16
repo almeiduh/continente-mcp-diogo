@@ -15,7 +15,8 @@ export const ObservedQuantitySchema = z.discriminatedUnion('status', [
     status: z.literal('unknown'),
     value: z.number().finite().nonnegative().nullable(),
     rawText: z.string().nullable(),
-    reason: z.enum(['missing', 'unsupported_unit', 'unrecognized_format', 'invalid_value']).optional(),
+    /** Why the quantity is unknown, when the server can tell; null otherwise. */
+    reason: z.enum(['missing', 'unsupported_unit', 'unrecognized_format', 'invalid_value']).nullable(),
   }),
 ]);
 export type ObservedQuantity = z.infer<typeof ObservedQuantitySchema>;

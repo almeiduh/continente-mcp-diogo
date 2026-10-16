@@ -4,7 +4,7 @@ import type { TestContext } from 'node:test';
 import { InitializeResultSchema, ListToolsResultSchema, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { present } from '../test-support/helpers.js';
 import { CartData, FrequencyData, OrdersData } from '../src/mcp/contracts.js';
-import { CartMutationResultSchema } from '../src/domain/index.js';
+import { MutationData } from '../src/mcp/contracts.js';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -62,15 +62,15 @@ test('all tools serialize advertised outputs through real stdio, preserving quan
     const args = tool.name === 'search_products' ? { query: 'milk' } : tool.name === 'add_cart_item' ? { productId: '00123', quantity: 1 } :
       tool.name === 'set_cart_item_quantity' ? { productId: '00123', quantity: 0 } :
       ['remove_cart_item', 'get_product'].includes(tool.name) ? { productId: '00123' } : tool.name === 'get_order' ? { orderId: 'first' } :
-      tool.name === 'preview_basket' ? { items: [{ productId: '00123', quantity: 1 }] } :
+      tool.name === 'preview_cart_changes' ? { items: [{ productId: '00123', quantity: 1 }] } :
       tool.name === 'get_product_labels' ? { productIds: ['00123'] } :
       tool.name === 'clear_cart' ? { confirm: true } :
       tool.name === 'choose_products' ? { decisions: [{ question: 'Milk', productIds: ['00123', '00123'] }] } : {};
     await call(tool.name, args);
   }
   const empty = await call('get_cart'); assert.deepEqual(dataOf(empty, CartData).items, []);
-  const add = await call('add_cart_item', { productId: '00123', quantity: 2 }); assert.equal(dataOf(add, CartMutationResultSchema.options[0]).confirmedQuantity.value, 2);
-  const set = await call('set_cart_item_quantity', { productId: '00123', quantity: 5 }); assert.equal(dataOf(set, CartMutationResultSchema.options[0]).confirmedQuantity.value, 5);
+  const add = await call('add_cart_item', { productId: '00123', quantity: 2 }); assert.equal(dataOf(add, MutationData).confirmedQuantity.value, 2);
+  const set = await call('set_cart_item_quantity', { productId: '00123', quantity: 5 }); assert.equal(dataOf(set, MutationData).confirmedQuantity.value, 5);
   const before = (await io.metrics()).detailReads;
   await call('list_frequently_bought_products', { orderLimit: 1 }); assert.equal((await io.metrics()).detailReads - before, 1);
   const ranked = await call('list_frequently_bought_products', { orderLimit: 2, limit: 1 }); assert.equal(dataOf(ranked, FrequencyData).products.length, 1);

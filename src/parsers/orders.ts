@@ -113,8 +113,8 @@ export function aggregatePurchaseFrequency(orders: OrderLine[][]): Result<Purcha
     const seen = new Set<string>();
     for (const item of items) {
       const key = item.productId !== null ? `id:${item.productId}` : `name:${item.name}`;
-      const entry: PurchaseFrequency = tally.get(key) ?? { productId: item.productId, identityBasis: item.productId !== null ? 'product' : 'name', name: item.name, quantities: [], orders: 0 };
-      if (item.quantity.status === 'unknown') entry.unknownQuantityLines = (entry.unknownQuantityLines ?? 0) + 1;
+      const entry: PurchaseFrequency = tally.get(key) ?? { productId: item.productId, identityBasis: item.productId !== null ? 'product' : 'name', name: item.name, quantities: [], orders: 0, unknownQuantityLines: 0 };
+      if (item.quantity.status === 'unknown') entry.unknownQuantityLines++;
       else {
         const observed = item.quantity.quantity;
         const existing = entry.quantities.find(value => value.unit === observed.unit);

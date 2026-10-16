@@ -122,7 +122,7 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `choose_products` | Let the user pick between products, with photos where the client supports it |
 | `list_favorites` | Your saved favorites (`refresh: true` fetches the latest) |
 | `get_cart` | Cart lines, quantities, bags and totals |
-| `preview_basket` | What a list of changes would do and cost, without changing the cart |
+| `preview_cart_changes` | What a list of changes would do and cost, without changing the cart |
 | `add_cart_item` | Add an amount on top of what is in the cart |
 | `set_cart_item_quantity` | Make the cart hold exactly a quantity; zero removes |
 | `remove_cart_item` | Remove a line from the cart |

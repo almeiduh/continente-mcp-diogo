@@ -38,7 +38,7 @@ test('the cart\'s checkout reads the minimum and EntregaZero, which a signed-out
   assert.equal(valueOf(parseCartResponse(minicart({ entregaZero: true, signedIn: false }))).checkout.entregaZero, null);
 });
 
-test('get_cart and preview_basket say the minimum order and the delivery fee', async t => {
+test('get_cart and preview_cart_changes say the minimum order and the delivery fee', async t => {
   const { services } = injectedServices();
   let cart = minicart({ entregaZero: true, products: 62.4 });
   services.cart.getCart = async () => parseCartResponse(cart);
@@ -61,7 +61,7 @@ test('get_cart and preview_basket say the minimum order and the delivery fee', a
 
   // 40 tins at €1.15 take €4.05 of products to €50.05: over the minimum and, with EntregaZero, free delivery.
   cart = minicart({ entregaZero: true });
-  const preview = await client.callTool({ name: 'preview_basket', arguments: { items: [{ productId: '3697794', quantity: 40 }] } });
+  const preview = await client.callTool({ name: 'preview_cart_changes', arguments: { items: [{ productId: '3697794', quantity: 40 }] } });
   const data = dataOf(preview, PreviewData);
   assert.deepEqual([data.productsAfter, data.checkout.meetsMinimum, data.checkout.deliveryFee], [eur(5005), true, 'free']);
   assert.match(textOf(preview), /Products in the cart after these changes: €50\.05\nMinimum order: €20\.00, reached\.\nDelivery: free with your EntregaZero/);

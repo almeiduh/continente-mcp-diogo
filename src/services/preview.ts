@@ -70,7 +70,7 @@ export class BasketPreviewService {
     if (!reference.ok) throw new Error('Product references are checked before the preview');
     const { productId } = reference.value;
     const blank = (error: ToolError): BasketPreviewLine => ({ productId, cartItemId, name: null, requested: null, storefrontQuantity: null,
-      current: { status: 'unknown', value: null, rawText: null }, change: null, availability: null, price: null,
+      current: { status: 'unknown', value: null, rawText: null, reason: null }, change: null, availability: null, price: null,
       packageText: null, package: null, saleRules: null, estimatedCost: null, estimated: false, error });
     const key = `${productId}|${item.cartItemId ?? ''}`;
     if (seen.has(key)) return blank({ code: 'invalid_input', message: 'This product is listed more than once', retryable: false });
@@ -82,7 +82,7 @@ export class BasketPreviewService {
     const details = product.value;
     const rules = details.saleRules.status === 'available' ? details.saleRules.rules : null;
     const unit = rules?.saleUnit ?? null;
-    const current: ObservedQuantity = !selected.ok ? { status: 'unknown', value: null, rawText: null }
+    const current: ObservedQuantity = !selected.ok ? { status: 'unknown', value: null, rawText: null, reason: null }
       : line ? line.quantity : { status: 'known', quantity: { value: 0, unit: unit ?? 'un' } };
     const base: BasketPreviewLine = { productId, cartItemId: cartItemId ?? line?.cartItemId ?? null, name: details.name,
       requested: unit ? { value: item.quantity, unit } : null, storefrontQuantity: null, current, change: null, availability: details.availability, price: details.price,

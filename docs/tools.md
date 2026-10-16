@@ -12,7 +12,7 @@ behaviour annotations.
 | `choose_products` | No | No | `decisions` (1–10 of `question`, `productIds` (2–4), `suggested?`) |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
 | `get_cart` | Yes | No | — |
-| `preview_basket` | Yes | No | `items` (1–30 of `productId`, `quantity` ≥ 0, `cartItemId?`) |
+| `preview_cart_changes` | Yes | No | `items` (1–30 of `productId`, `quantity` ≥ 0, `cartItemId?`) |
 | `add_cart_item` | Yes | Yes | `productId`, `quantity` (> 0, default 1), `cartItemId?` |
 | `set_cart_item_quantity` | Yes | Yes | `productId`, `quantity` (≥ 0), `cartItemId?` |
 | `remove_cart_item` | Yes | Yes | `productId`, `cartItemId?` |
@@ -65,7 +65,11 @@ calls, for clients that do not pass structured content to the model.
   products sold by the piece but priced by weight. Each cart line also has `lineTotal`.
 - **Quantities** are `{ value, unit }` with unit `un`, `kg`, `g`, `l` or `ml`. Quantities read
   from the website are either `{ status: "known", quantity }` or
-  `{ status: "unknown", value, rawText, reason }`; an unknown unit is never guessed.
+  `{ status: "unknown", value, rawText, reason }`; an unknown unit is never guessed, and
+  `reason` is `null` when the server cannot tell why.
+- **Unknown values** are `null`, never left out: every field a tool lists is always present.
+- **`observedAt`** says when the website was read, on every result that reads it (all tools
+  except `get_session_status` and `list_favorites`, which has `fetchedAt`).
 - **Completeness** (`complete`, `partial`, `unknown`) describes the pages that were read, not
   the whole catalogue or account history. Searches read at most five result pages and order
   listings at most ten.
@@ -168,7 +172,7 @@ then `partial`.
 `catalogView` says whose view of the catalogue the result is, from the server's last sign-in
 check: `signed_in`, `signed_out` (also when there is no saved session at all) or `unknown`.
 Availability, and whether a product page opens at all, can differ between the two.
-`get_product` and `preview_basket` return it too.
+`get_product` and `preview_cart_changes` return it too.
 
 Results keep the website's relevance order. Products in your saved favorites are marked
 `favorite: true`; pass `favoritesFirst: true` to move them to the top of the returned products.
@@ -297,7 +301,7 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   `lineTotalBeforeDiscount` is `null`.
 - `storefrontQuantity` is what the website holds in its own unit for products sold by the piece
   but priced by weight: the kilograms in the cart, such as 1.16 kg for 4 onions of 0.29 kg,
-  which is also their estimated weight. It is `null` for other products. `preview_basket` lines
+  which is also their estimated weight. It is `null` for other products. `preview_cart_changes` lines
   have it too, for the desired total.
 - `estimated` is `true` for products sold by the piece but priced by weight: they are charged by
   the weight picked, so their `lineTotal` is an estimate. `totals.estimated` is `true` when any
@@ -330,7 +334,7 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   highest of their fees. The €50 EntregaZero threshold is not in the cart's data: it comes from
   Continente's help pages, and the weekly site check confirms they still say so.
 
-### `preview_basket`
+### `preview_cart_changes`
 
 Shows what `set_cart_item_quantity` would do for a list of products and desired totals, without
 changing anything. It reads the cart once and each product page once, so it takes about a
@@ -373,11 +377,14 @@ confirmed by reading the cart back:
 
 ```json
 { "result": { "status": "success", "data": { "outcome": "confirmed", "productId": "00123",
-  "requested": { "value": 2, "unit": "un" }, "confirmedQuantity": { "value": 5, "unit": "un" } } } }
+  "requested": { "value": 2, "unit": "un" }, "confirmedQuantity": { "value": 5, "unit": "un" },
+  "cartItemId": null, "disposition": null, "observedAt": "2026-10-16T12:00:00.000Z" } } }
 ```
 
 `requested` is the amount from the call (the increment for `add_cart_item`);
-`confirmedQuantity` is the quantity now in the cart.
+`confirmedQuantity` is the quantity now in the cart. `cartItemId` is the line the call named, or
+`null`. `disposition` is `removed` or `already_absent` for a removal (including a quantity of 0),
+and `null` otherwise.
 
 #### Failed and uncertain changes
 
@@ -410,12 +417,13 @@ Returns recent order summaries, newest first. `limit` counts summaries; `detailL
 `items`), `unavailable` (with `error`) or `not_requested`. Pass `nextCursor` back as `cursor`
 to continue; if the history changed in between, restart without a cursor.
 
-`data`: `orders`, `completeness`, `failures`, `nextCursor`, `hasMore`, `detailBudget`,
-`detailsRead`, `scanFailures`.
+`data`: `observedAt`, `orders`, `completeness`, `failures`, `nextCursor`, `hasMore`,
+`detailBudget` and `detailsRead`. Each failure has `stage` (`listing` or `detail`), the
+`orderId` and `orderNumber` it concerns (or `null`), and the `error`.
 
 ### `get_order`
 
-Reads one order by `orderId`. `data`: `order`, `unknownQuantityLines`.
+Reads one order by `orderId`. `data`: `observedAt`, `order`, `unknownQuantityLines`.
 
 ### `list_frequently_bought_products`
 
@@ -424,10 +432,11 @@ contained them, then by total units. Products are grouped by `productId`; lines 
 are grouped by name (`identityBasis: "name"`). Totals are kept separate per unit, and lines
 with unknown quantities are counted in `unknownQuantityLines` instead of being guessed.
 
-`data`: `products`, `listed`, `scanned`, `succeeded`, `failed`, `unscanned`,
-`unknownQuantityLines`, `failures`, `completeness`, `nextCursor`. If no order details could
-be read at all, the result is an `order_details_unavailable` error with the statistics in a
-top-level `scan` field.
+`data`: `observedAt`, `products` (each with `unknownQuantityLines`, 0 when none), `listed`,
+`scanned`, `succeeded`, `failed`, `unscanned`, `unknownQuantityLines`, `failures` (as in
+`list_orders`) and `completeness`. `orderLimit` sets how far back it reads; there is no cursor.
+If no order details could be read at all, the result is an `order_details_unavailable` error
+whose `result.scan` holds the same statistics.
 
 ## Session
 

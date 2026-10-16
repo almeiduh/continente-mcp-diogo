@@ -115,7 +115,7 @@ export const OrderSchema = z.strictObject({
   orderId: OrderIdSchema.nullable(),
   orderNumber: OrderNumberSchema.nullable(),
   date: z.string().nullable(),
-  rawDate: z.string().nullable().optional(),
+  rawDate: z.string().nullable(),
   lines: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), items: z.array(OrderLineSchema) }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),
@@ -130,7 +130,7 @@ export const PurchaseFrequencySchema = z.strictObject({
   name: z.string().trim().min(1),
   quantities: z.array(QuantitySchema),
   orders: z.number().int().positive(),
-  unknownQuantityLines: z.number().int().nonnegative().optional(),
+  unknownQuantityLines: z.number().int().nonnegative(),
 }).refine(frequency => (frequency.identityBasis === 'product') === (frequency.productId !== null),
 { message: 'Identity basis must agree with the available product ID' })
   .refine(frequency => new Set(frequency.quantities.map(quantity => quantity.unit)).size === frequency.quantities.length,

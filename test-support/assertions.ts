@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { ErrorResultSchema } from '../src/mcp/contracts.js';
+/** An error result, with any details a tool's errors add (such as list_frequently_bought_products' scan). */
+const errorResult = ErrorResultSchema.safeExtend({ scan: z.unknown().optional() });
 
 import assert from 'node:assert/strict';
 
@@ -11,10 +13,10 @@ export function dataOf<S extends z.ZodType>(response: unknown, schema: S): z.out
   return schema.parse(parsed.data);
 }
 export function toolError(response: unknown) {
-  return ErrorResultSchema.parse(envelope.parse(response).structuredContent.result).error;
+  return errorResult.parse(envelope.parse(response).structuredContent.result).error;
 }
 export function mutationOf(response: unknown) {
-  const mutation = ErrorResultSchema.parse(envelope.parse(response).structuredContent.result).mutation;
+  const mutation = errorResult.parse(envelope.parse(response).structuredContent.result).mutation;
   assert.ok(mutation);
   return mutation;
 }

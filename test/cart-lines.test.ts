@@ -40,7 +40,7 @@ test('a line without usable sale rules keeps its amount with an unknown unit and
   assert.equal(present(valueOf(parseCartResponse(line(undefined))).items[0]).price, null);
   assert.equal(present(valueOf(parseCartResponse(line({ primaryunit: 'kg' }))).items[0]).price, null);
   const quantity = (rates?: Record<string, unknown>) => present(valueOf(parseCartResponse(line(rates))).items[0]).quantity;
-  assert.deepEqual(quantity(), { status: 'unknown', value: 2, rawText: null });
+  assert.deepEqual(quantity(), { status: 'unknown', value: 2, rawText: null, reason: null });
   for (const rates of [{ primaryunit: 'kg' }, { primaryunit: 'kg', secondaryunit: 'lt', hasAlternativeSaleUnit: true }, { primaryunit: 'un', selectedunit: 'primary', hasConversionRate: true }]) {
     assert.deepEqual(quantity(rates), { status: 'unknown', value: 2, rawText: null, reason: 'unsupported_unit' });
   }

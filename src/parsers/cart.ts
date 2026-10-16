@@ -98,7 +98,7 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
     kind: bag !== null && reference.value.productId === bag ? 'bag' : 'product',
     quantity: units?.quantity && units.countsPieces ? { status: 'known', quantity: { value: rawQuantity, unit: units.quantity } }
       : units?.quantity ? { status: 'unknown', value: null, rawText: null, reason: 'missing' }
-        : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
+        : { status: 'unknown', value: rawQuantity, rawText: null, reason: units ? 'unsupported_unit' : null },
     storefrontQuantity: units?.weighted && units.countsPieces && units.rate !== null && units.storefrontUnit
       ? { value: Number((rawQuantity * units.rate).toPrecision(12)), unit: units.storefrontUnit } : null,
     price,

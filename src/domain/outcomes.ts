@@ -6,8 +6,11 @@ import { QuantitySchema } from './quantity.js';
 const mutation = { productId: ProductIdSchema, requested: QuantitySchema };
 export const CartMutationResultSchema = z.discriminatedUnion('outcome', [
   z.strictObject({
-    ...mutation, outcome: z.literal('confirmed'), confirmedQuantity: QuantitySchema, cartItemId: CartItemIdSchema.optional(),
-    disposition: z.enum(['removed', 'already_absent']).optional(),
+    ...mutation, outcome: z.literal('confirmed'), confirmedQuantity: QuantitySchema,
+    /** The cart line changed, when the call named one; null otherwise. */
+    cartItemId: CartItemIdSchema.nullable(),
+    /** For a removal: whether the product was removed or was not in the cart; null for other changes. */
+    disposition: z.enum(['removed', 'already_absent']).nullable(),
   }),
   z.strictObject({
     ...mutation, outcome: z.literal('not_applied'), error: ToolErrorSchema,

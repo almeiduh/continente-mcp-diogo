@@ -106,7 +106,7 @@ test('pagination accepts only same-origin URLs and finite positive page sizes', 
 test('cart JSON supports add and minicart envelopes without invented units or prices', () => {
   const cart = valueOf(parseCartResponse(rawCart(2)));
   assert.equal(present(cart.items[0]).productId, '00123');
-  assert.deepEqual(present(cart.items[0]).quantity, { status: 'unknown', value: 2, rawText: null });
+  assert.deepEqual(present(cart.items[0]).quantity, { status: 'unknown', value: 2, rawText: null, reason: null });
   // Without the line's sale rules, a unit price would not say what it is for, so it stays unknown.
   assert.equal(present(cart.items[0]).price, null);
   const mini = parseCartResponse({ resources: { customerAuthenticated: true }, basket: { itemsSortedByBrand: [{ items: [{ id: '00123-master', productName: 'Milk', secondaryQuantity: 3, priceTotal: { value: 4.25, basePriceValue: 5 } }] }] } });

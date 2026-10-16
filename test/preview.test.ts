@@ -33,7 +33,7 @@ async function preview(t: test.TestContext, items: { productId: string; quantity
   services.cart.getCart = async () => { cartReads++; return parseCartResponse(minicart()); };
   services.catalog.getProduct = async reference => { productReads++; const found = catalogue[reference]; return found ? ok(found) : fail('not_found'); };
   const { client } = await connect(t, services);
-  const result = await client.callTool({ name: 'preview_basket', arguments: { items } });
+  const result = await client.callTool({ name: 'preview_cart_changes', arguments: { items } });
   return { result, data: dataOf(result, PreviewData), state, cartReads, productReads };
 }
 
@@ -53,7 +53,7 @@ test('a preview says what each line would do and cost, reading the cart once and
   assert.equal(data.observedAt, '2026-10-14T12:00:00.000Z'); assert.equal(data.catalogView, 'unknown');
   assert.deepEqual(data.lines.map(line => line.storefrontQuantity), [null, { value: 1, unit: 'kg' }, null, null]);
   const text = textOf(result);
-  assert.match(text, /^Basket preview, nothing was changed:/);
+  assert.match(text, /^Cart changes preview, nothing was changed:/);
   assert.match(text, /Leite Meio Gordo \[8912985\] — decrease to 2 un \(cart has 3 un\), €1\.70\n   pack 1 lt, available/);
   assert.match(text, /Maçã Pink Lady \[7303767\] — increase to 5 un, about 1 kg \(cart has 3 un\), about €2\.50/);
   assert.match(text, /Estimated cost of these lines: about €10\.39\nProducts in the cart after these changes: about €10\.39\nDelivery fee: set at checkout by day, time slot and area; not included here\.\n1 line\(s\) need attention/);
@@ -79,9 +79,9 @@ test('a preview needs the cart and checks references before any read', async t =
   services.catalog.getProduct = async () => { reads++; return fail(); };
   services.cart.getCart = async () => fail('not_authenticated');
   const { client } = await connect(t, services);
-  const signedOut = await client.callTool({ name: 'preview_basket', arguments: { items: [{ productId: '3697794', quantity: 1 }] } });
+  const signedOut = await client.callTool({ name: 'preview_cart_changes', arguments: { items: [{ productId: '3697794', quantity: 1 }] } });
   assert.equal(signedOut.isError, true); assert.equal(reads, 0); assert.equal(state.writes, 0);
-  await assert.rejects(client.callTool({ name: 'preview_basket', arguments: { items: [] } }), { code: -32602 });
+  await assert.rejects(client.callTool({ name: 'preview_cart_changes', arguments: { items: [] } }), { code: -32602 });
 });
 
 function present<T>(value: T | undefined): T { assert.ok(value !== undefined); return value; }

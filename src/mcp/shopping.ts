@@ -153,7 +153,7 @@ function formatLabels(labels: LabelEntry[]): string {
   }));
   return `Product labels, from the website's copy (the packaging prevails; nothing here is inferred):\n\n${list}`;
 }
-/** Minimum order and delivery for a products total, as `get_cart` and `preview_basket` say them. */
+/** Minimum order and delivery for a products total, as `get_cart` and `preview_cart_changes` say them. */
 function checkoutLines(checkout: Checkout, products: Money | null): string[] {
   const short = (target: Money) => products && products.minorUnits < target.minorUnits ? euros({ currency: 'EUR', minorUnits: target.minorUnits - products.minorUnits }) : null;
   const minimum = checkout.minimumOrder;
@@ -176,7 +176,7 @@ function formatPreview(preview: BasketPreview): string {
   }));
   const total = preview.estimatedCost ? `${preview.estimated ? 'about ' : ''}${euros(preview.estimatedCost)}` : 'unknown';
   const after = preview.productsAfter ? `\nProducts in the cart after these changes: ${preview.estimated ? 'about ' : ''}${euros(preview.productsAfter)}` : '';
-  return `Basket preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}${after}` +
+  return `Cart changes preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}${after}` +
     `\n${checkoutLines(preview.checkout, preview.productsAfter).join('\n')}` +
     (preview.problems ? `\n${preview.problems} line(s) need attention: refused or not available.` : '') +
     '\nApply each line with set_cart_item_quantity. Prices and stock can change before then.';
@@ -313,7 +313,7 @@ export class ShoppingHandlers {
   private async mutation(result: MutationResult, operation: 'add' | 'set' | 'remove'): Promise<CallToolResult> {
     if (!result.ok) return this.failed(result.error, { outcome: 'not_applied' });
     const value = result.value;
-    if (value.outcome === 'confirmed') return response(value, mutationText(value, operation));
+    if (value.outcome === 'confirmed') return response({ ...value, observedAt: this.observedAt() }, mutationText(value, operation));
     return this.failed(value.error, value.outcome === 'unknown' ? { outcome: 'unknown', recovery: value.recovery } : { outcome: 'not_applied' });
   }
   async addCartItem(reference: string, quantity: number, cartItemId?: string): Promise<CallToolResult> {
@@ -327,7 +327,7 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error, { outcome: 'not_applied' });
     const value = result.value;
     if (value.outcome === 'unknown') return this.failed(value.error, { outcome: 'unknown', recovery: value.recovery });
-    return response(value, value.disposition === 'already_empty' ? 'The cart was already empty; nothing changed.'
+    return response({ ...value, observedAt: this.observedAt() }, value.disposition === 'already_empty' ? 'The cart was already empty; nothing changed.'
       : `Emptied the cart: removed ${value.removedLines} product line${value.removedLines === 1 ? '' : 's'}. The cart now holds no products.`);
   }
   async removeCartItem(reference: string, cartItemId?: string): Promise<CallToolResult> {
@@ -346,8 +346,8 @@ export class ShoppingHandlers {
     const page = result.value;
     const partial = page.completeness === 'partial';
     const list = numbered(page.items.map(order => `${orderHeading(order)}\n${formatOrderLines(order)}`));
-    return response({ orders: page.items, completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor,
-      hasMore: page.hasMore, detailBudget: page.detailBudget, detailsRead: page.detailsRead, scanFailures: page.scanFailures },
+    return response({ observedAt: this.observedAt(), orders: page.items, completeness: page.completeness, failures: page.scanFailures, nextCursor: page.nextCursor,
+      hasMore: page.hasMore, detailBudget: page.detailBudget, detailsRead: page.detailsRead },
     (list ? `Orders:\n\n${list}` : 'No orders found.') +
       (partial ? '\n\nPartial results: some order pages or details could not be read.' : '') +
       (page.nextCursor ? `\n\nMore orders are available. Pass cursor "${page.nextCursor}" to continue.` : ''),
@@ -360,7 +360,7 @@ export class ShoppingHandlers {
     const order = result.value;
     const lines = order.lines.status === 'available' ? order.lines.items : [];
     const unknownQuantityLines = lines.filter(line => line.quantity.status === 'unknown').length;
-    return response({ order, unknownQuantityLines }, `${orderHeading(order)} — ${lines.length} product lines:\n${formatOrderLines(order)}` +
+    return response({ observedAt: this.observedAt(), order, unknownQuantityLines }, `${orderHeading(order)} — ${lines.length} product lines:\n${formatOrderLines(order)}` +
       (unknownQuantityLines ? `\n\n${unknownQuantityLines} quantities could not be read.` : ''),
     unknownQuantityLines ? 'partial' : lines.length ? 'success' : 'empty');
   }
@@ -371,12 +371,13 @@ export class ShoppingHandlers {
     const scan = result.value;
     if (!scan.succeeded && (scan.failed || scan.unscanned)) {
       const unavailable = errorResult(failure('order_details_unavailable', 'No order details could be read. See scan.failures.').error);
-      return { ...unavailable, structuredContent: { ...(unavailable.structuredContent as Record<string, unknown>), scan } };
+      const envelope = unavailable.structuredContent as { result: Record<string, unknown> };
+      return { ...unavailable, structuredContent: { result: { ...envelope.result, scan: { ...scan, observedAt: this.observedAt() } } } };
     }
     const products = scan.products.slice(0, limit);
     const list = numbered(products.map(item => `${item.name}${item.productId ? ` [${item.productId}]` : ''} — ` +
       `${item.quantities.map(amount).join(' + ') || 'quantity unknown'} across ${item.orders} order${item.orders === 1 ? '' : 's'}`));
-    return response({ ...scan, products },
+    return response({ ...scan, products, observedAt: this.observedAt() },
       (list ? `Most frequently bought products across ${scan.succeeded} orders:\n\n${list}` : scan.listed === 0 ? 'No orders found.' : 'The orders read contain no product lines.') +
       (scan.failed ? `\n\nPartial results: ${scan.failed} of ${scan.scanned} orders could not be read and are not counted.` : '') +
       (scan.unscanned ? `\n${scan.unscanned} orders were not read before the request stopped.` : '') +
@@ -448,7 +449,7 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'delivery fee is free with EntregaZero or set at checkout by day, slot and area (it is not in the totals until then). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),
-    tool('preview_basket', 'Preview basket',
+    tool('preview_cart_changes', 'Preview cart changes',
       'Check products and the total wanted of each before changing the cart, without changing anything. For each: what the cart holds, ' +
       'what set_cart_item_quantity would do (add, increase, decrease, remove or none), why it would be refused (such as a minimum or step), ' +
       'availability, pack details and the estimated cost, plus the products total after the changes with its minimum order and delivery fee. ' +

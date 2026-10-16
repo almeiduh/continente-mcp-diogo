@@ -8,7 +8,17 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `get_cart` and `preview_basket` have `checkout`: the minimum order the cart states (`minimumOrder`, `meetsMinimum`), whether the account has EntregaZero, and `deliveryFee`, which is `free` when EntregaZero applies (orders of €50 or more) and otherwise `set_at_checkout`, as the fee depends on the day, slot and area chosen at checkout. `preview_basket` also gives `productsAfter`, the cart's products total once its lines are applied, and judges the minimum order and delivery on it. The text says, for example, "Minimum order: €20.00, reached." and "Delivery: free with your EntregaZero (orders of €50.00 or more).", or how much is still to go. The weekly site check confirms the €50 EntregaZero threshold on Continente's help pages.
+- `get_cart` and `preview_cart_changes` have `checkout`: the minimum order the cart states (`minimumOrder`, `meetsMinimum`), whether the account has EntregaZero, and `deliveryFee`, which is `free` when EntregaZero applies (orders of €50 or more) and otherwise `set_at_checkout`, as the fee depends on the day, slot and area chosen at checkout. `preview_cart_changes` also gives `productsAfter`, the cart's products total once its lines are applied, and judges the minimum order and delivery on it. The text says, for example, "Minimum order: €20.00, reached." and "Delivery: free with your EntregaZero (orders of €50.00 or more).", or how much is still to go. The weekly site check confirms the €50 EntregaZero threshold on Continente's help pages.
+
+### Changed
+
+Contract review before 1.0. These change field names and shapes; clients that read `structuredContent` need updating.
+
+- `preview_basket` is now `preview_cart_changes` (title "Preview cart changes"): it shows what `set_cart_item_quantity` would do to the cart.
+- Unknown values are always `null` rather than left out: `cartItemId` and `disposition` on cart-change results, order `rawDate`, a quantity's `reason`, and `unknownQuantityLines` (0 when none) on frequently bought products.
+- `list_orders` has one `failures` list, each with `stage`, `orderId`, `orderNumber` and `error`; `scanFailures` is gone.
+- `list_frequently_bought_products` no longer returns `nextCursor`, which no input could use. When no order detail can be read, its statistics are in `result.scan`, inside the result envelope, instead of beside it.
+- `observedAt` is on every result that reads the website: also `list_orders`, `get_order`, `list_frequently_bought_products` and the cart-change tools.
 
 ## [0.10.0] - 2026-10-16
 
