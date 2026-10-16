@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `get_product` reported some products as available that could not be bought: the page's structured data said in stock while its add button was disabled. Availability now follows the page's own add button, with the structured data as a fallback.
+- A product page the website redirects to its home page was reported as "no longer sold". It may only be hidden from this session: the same product can open signed in and redirect signed out, or not be sold in your area. The `not_found` message now says so.
+
 - Some products sold by the piece but priced per kg, such as onions, were shown in the cart with the wrong number of pieces: 4 onions read as 1, so setting them to 4 always ended with an unknown outcome. For these products the cart's JSON does not count pieces; the quantity is now read from the kilograms on the cart page, and stays unknown when that is not a whole number of pieces.
 
 ### Changed
@@ -16,6 +19,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Search results have `availability`, from the results page: `available` or `unavailable` when its "Indisponível" badge and add button agree, `unknown` otherwise. Unavailable results are marked in the text.
 - `preview_basket`: for a list of products and desired totals, what the cart holds now, what `set_cart_item_quantity` would do, what would be refused and why, availability, pack details and the estimated cost. It changes nothing.
 - `search_products` accepts `cursor`: pass `nextCursor` back with the same query to continue right after the last product returned. Following cursors never skips or repeats a result. Before, products read beyond `limit` were dropped and `nextCursor` could not be used.
 - `search_products`, `get_product` and `get_cart` return `observedAt`, when the website was read.

@@ -39,6 +39,8 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   /** The recommended retail price (PVPR) shown beside a promotional price; null when the website shows none. */
   recommendedPrice: PriceTagSchema.nullable(),
   ...packDetails,
+  /** Whether the results page offers the product: `unknown` unless its badge and add button agree. */
+  availability: z.enum(['available', 'unavailable', 'unknown']),
 });
 export type Product = z.infer<typeof ProductSchema>;
 

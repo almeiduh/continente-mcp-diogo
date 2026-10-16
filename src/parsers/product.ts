@@ -23,7 +23,12 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     try { const candidate = record(JSON.parse($(node).text())); if (candidate?.['@type'] === 'Product' && String(candidate.sku) === expectedId) products.push(candidate); } catch { /* Optional metadata stays unknown. */ }
   });
   const offer = products.length === 1 ? record(products[0]!.offers) : null;
-  const availability = typeof offer?.availability === 'string' ? offer.availability.replace(/^http:\/\//, 'https://') : '';
+  const listed = typeof offer?.availability === 'string' ? offer.availability.replace(/^http:\/\//, 'https://') : '';
+  // The page's own add button says whether the product can be bought; its structured data can still
+  // say InStock when the button is disabled, so the button wins and the structured data is a fallback.
+  const stock = [...new Set($('button.js-add-to-cart-button[data-container="pdp"]').filter((_, node) => $(node).attr('data-pid') === expectedId)
+    .map((_, node) => $(node).attr('data-outofstock')).get())];
+  const buyable = stock.length === 1 && (stock[0] === 'true' || stock[0] === 'false') ? stock[0] === 'false' : null;
   const priceTag = (selector: string) => {
     const parsed = parsePriceTag($(`.ct-pdp--prices ${selector}`).first().text());
     return parsed.ok ? parsed.value : null;
@@ -39,7 +44,8 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
     recommendedPrice: recommended.ok ? recommended.value : null,
-    availability: availability === 'https://schema.org/InStock' ? 'available' : ['https://schema.org/OutOfStock', 'https://schema.org/Discontinued'].includes(availability) ? 'unavailable' : 'unknown',
+    availability: buyable !== null ? (buyable ? 'available' : 'unavailable') : listed === 'https://schema.org/InStock' ? 'available'
+      : ['https://schema.org/OutOfStock', 'https://schema.org/Discontinued'].includes(listed) ? 'unavailable' : 'unknown',
     saleRules: rules.ok ? { status: 'available', rules: rules.value.rules } : { status: 'unavailable', error: rules.error },
   };
   const parsed = parseValue(ProductDetailsSchema, product, 'product details');

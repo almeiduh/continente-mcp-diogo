@@ -14,10 +14,11 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
   assert.deepEqual(page.products[0], { productId: '00123', productSlug: 'leite-00123', name: 'Leite Meio Gordo',
     price: { amount: eur(129), per: 'item' }, url: 'https://www.continente.pt/produto/leite-00123.html',
     secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' },
-    package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false } });
+    package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false }, availability: 'available' });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
-  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null); assert.equal(banana.recommendedPrice, null);
+  assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null);
+  assert.equal(banana.availability, 'unavailable'); assert.equal(present(page.products[2]).availability, 'unknown'); assert.equal(banana.recommendedPrice, null);
   assert.equal(present(page.products[2]).price, null);
   assert.equal(valueOf(parseProductSearchPage(fixture('catalog') + fixture('catalog'))).products.length, 3);
 });
@@ -31,6 +32,14 @@ test('one unreadable result is reported without failing the rest of the page', (
   ]);
   const broken = parseProductSearchPage('<main><div class="ct-inner-tile-wrap"><span>no product</span></div></main>');
   assert.equal(broken.ok, false);
+});
+test('search availability needs the badge and the add button to agree', () => {
+  const tile = (badge: string, button: boolean) => `<main><div class="ct-inner-tile-wrap"><a href="/produto/leite-00123.html">Leite</a>` +
+    `${badge ? `<div class="dual-badge-message dual-badge-unavailable-00123 ${badge}">Indisponível</div>` : ''}` +
+    `${button ? '<button class="add-to-cart js-add-to-cart">Adicionar</button>' : ''}</div></main>`;
+  const availability = (badge: string, button: boolean) => present(valueOf(parseProductSearchPage(tile(badge, button))).products[0]).availability;
+  assert.equal(availability('d-none', true), 'available'); assert.equal(availability('null', false), 'unavailable');
+  for (const [badge, button] of [['d-none', false], ['null', true], ['', true], ['', false]] as const) assert.equal(availability(badge, button), 'unknown');
 });
 test('an unreadable recommended price is reported and leaves the product usable', () => {
   const page = valueOf(parseProductSearchPage('<main><div class="ct-inner-tile-wrap"><a href="/produto/leite-00123.html">Leite</a>' +

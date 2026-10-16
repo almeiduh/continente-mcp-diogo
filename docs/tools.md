@@ -78,7 +78,11 @@ Search uses the local favorites snapshot and never signs in to refresh it.
 Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`,
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
 `400 gr (peso escorrido 260 gr)`), `package`, `minimumText` (a minimum purchase such as
-`600 gr (3 un)`), `recommendedPrice` and `favorite`.
+`600 gr (3 un)`), `recommendedPrice`, `availability` and `favorite`.
+
+`availability` is what the results page offers: `available` when the product has an add button
+and no "Indisponível" badge, `unavailable` when it has the badge and no button, and `unknown`
+when the two disagree or are missing. Check `get_product` before relying on it for a cart change.
 
 `package` is the pack label read into numbers, or `null` when any part of the label is not a
 known pattern:
@@ -129,11 +133,14 @@ Cart quantities are always in `saleUnit`. Products priced per kilogram but sold 
 (fruit, meat, fish) have `saleUnit: "un"` and `storefrontUnit: "kg"`: their minimum, maximum and
 step are whole pieces, and `storefrontUnitsPerSaleUnit` is the approximate weight of one piece.
 If the website's rules cannot be interpreted safely, `saleRules` is
-`{ "status": "unavailable", "error": ... }` and the result is `partial`. Availability reflects
-the product page as the server's session sees it, not delivery-slot stock: signed in, the
+`{ "status": "unavailable", "error": ... }` and the result is `partial`. Availability follows the
+product page's own add button: a disabled button means `unavailable`, even when the page's
+structured data still says in stock. It reflects the page as the server's session sees it, not
+delivery-slot stock: signed in, the
 website can show a different availability than in the public catalogue, so the same product can
-read `available` signed out and `unavailable` in your account. A product the website no longer
-sells returns `not_found`.
+read `available` signed out and `unavailable` in your account. A product page the website does
+not show to this session returns `not_found`: the product may not be sold in your area, or no
+longer be sold. Signed in and signed out can differ here too.
 
 ## Favorites
 
@@ -146,7 +153,7 @@ automatically when missing, is marked `stale` after 24 hours, and is replaced wh
 `data`: `favorites`, `fetchedAt`, `expiresAt`, `source` (`cache` or `website`), `freshness`
 (`fresh` or `stale`), `cacheState` (`empty` or `populated`), `completeness`.
 
-Favorites can include products the website no longer sells, still with their last price. Check
+Favorites can include products the website no longer shows, still with their last price. Check
 with `get_product` before adding one to the cart; it returns `not_found` for those.
 
 ## Cart

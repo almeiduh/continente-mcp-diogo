@@ -42,10 +42,10 @@ test('a page that never shows its marker is loaded twice, then judged rather tha
   assert.equal(ready.loaded.length, 1);
 });
 
-test('a product the website redirects to its home page is reported as no longer sold', async () => {
+test('a product the website redirects to its home page is reported as not shown to this session', async () => {
   const gone = site([{ url: 'https://www.continente.pt/', html: '<main>Home</main>', ready: true }]);
   const result = await new CatalogClient(gone.client).fetchProductDetails('rolo-de-cozinha-6781864');
-  assert.deepEqual(result.ok ? null : [result.error.code, result.error.message], ['not_found', 'This product is no longer sold on the website']);
+  assert.deepEqual(result.ok ? null : [result.error.code, result.error.message], ['not_found', 'The website does not show this product to this session: it may not be sold in your area, or no longer be sold']);
   assert.equal(gone.loaded.length, 1); assert.equal(gone.markerWaits(), 0);
   const product = site([{ url: 'https://www.continente.pt/produto/leite-00123.html', html: '<h1 class="product-name">Leite</h1>', ready: true }]);
   assert.equal((await new CatalogClient(product.client).fetchProductDetails('leite-00123')).ok, true);

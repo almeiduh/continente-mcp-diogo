@@ -66,7 +66,7 @@ function errorResult(error: ToolError, mutation?: MutationSummary, signIn?: Sign
 }
 
 export function formatProductSearchResults(products: SearchResult['page']['items']): string {
-  return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''} — ${priced(product.price)}` +
+  return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''}${product.availability === 'unavailable' ? ' (unavailable)' : ''} — ${priced(product.price)}` +
     `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}` +
     `${product.packageText ? `, pack ${product.packageText}` : ''}` +
     `${product.minimumText ? `, minimum ${product.minimumText}` : ''}\n   productId: ${product.productId}`));

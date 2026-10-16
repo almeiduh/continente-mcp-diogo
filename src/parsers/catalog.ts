@@ -75,9 +75,14 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
     if (!main.recognised) problem(`${position} (product ${reference.value.productId}) has a price in an unrecognised format; its price is unknown.`);
     if (!recommended.recognised) problem(`${position} (product ${reference.value.productId}) has a recommended price (PVPR) in an unrecognised format; it is unknown.`);
     const quantity = card.find('.pwc-tile--quantity').first().text();
+    // Every tile carries an "Indisponível" badge, hidden with d-none while the product can be bought;
+    // only an available tile has an add button. Anything else, such as markup without them, is unknown.
+    const badge = card.find(`.dual-badge-unavailable-${reference.value.productId}`);
+    const addButton = card.find('button.js-add-to-cart').length > 0;
+    const availability = badge.length !== 1 ? 'unknown' : badge.hasClass('d-none') ? (addButton ? 'available' : 'unknown') : addButton ? 'unknown' : 'unavailable';
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
       secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
-      recommendedPrice: recommended.price }, 'product');
+      recommendedPrice: recommended.price, availability }, 'product');
     if (product.ok) entries.push({ product: product.value, position: start + index });
     else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });

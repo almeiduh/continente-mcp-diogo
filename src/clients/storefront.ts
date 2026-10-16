@@ -62,9 +62,10 @@ export class StorefrontClient {
 export class CatalogClient implements CatalogGateway {
   constructor(private readonly site: StorefrontClient) {}
   async fetchProductDetails(reference: string): Promise<Result<{ html: string; url: string }, ToolError>> {
-    // The website redirects a product it no longer sells to its home page.
+    // The website redirects a product page it does not show to this session to its home page. It may be
+    // sold elsewhere: the same product can open signed in and redirect signed out.
     const page = await this.site.readPage(productPath(reference), 'h1.product-name, .ct-pdp--prices',
-      url => url.pathname.startsWith('/produto/') ? null : failure('not_found', 'This product is no longer sold on the website').error);
+      url => url.pathname.startsWith('/produto/') ? null : failure('not_found', 'The website does not show this product to this session: it may not be sold in your area, or no longer be sold').error);
     if (!page.ok) return page;
     return page.value.ready ? success({ html: page.value.html, url: page.value.url }) : failure('invalid_data', 'Product detail content is unavailable');
   }

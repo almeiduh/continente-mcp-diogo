@@ -26,7 +26,12 @@ test('product detail fails closed on changed identity and never invents missing 
   const product = valueOf(parseProductDetails(html, url, ProductIdSchema.parse('00123')));
   assert.equal(product.price, null); assert.equal(product.recommendedPrice, null); assert.equal(product.availability, 'unknown');
   assert.equal(product.saleRules.status, 'unavailable');
-  const unavailable = fixture('product').replace('InStock', 'OutOfStock').replace('"primaryunit":"un"', '"primaryunit":"unknown"');
+  // The page's own add button decides; its structured data is only a fallback.
+  const disabled = fixture('product').replace('data-outofstock="false"', 'data-outofstock="true"');
+  assert.equal(valueOf(parseProductDetails(disabled, url, ProductIdSchema.parse('00123'))).availability, 'unavailable');
+  const noButton = fixture('product').replace(/<button class="add-to-cart js-add-to-cart js-add-to-cart-button button" [^>]*>Adicionar<\/button>/, '');
+  assert.equal(valueOf(parseProductDetails(noButton, url, ProductIdSchema.parse('00123'))).availability, 'available');
+  const unavailable = noButton.replace('InStock', 'OutOfStock').replace('"primaryunit":"un"', '"primaryunit":"unknown"');
   assert.equal(valueOf(parseProductDetails(unavailable, url, ProductIdSchema.parse('00123'))).availability, 'unavailable');
   assert.equal(valueOf(parseProductDetails(unavailable, url, ProductIdSchema.parse('00123'))).saleRules.status, 'unavailable');
 });
