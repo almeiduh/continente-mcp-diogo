@@ -1,6 +1,6 @@
 # Tool reference
 
-Continente MCP exposes 14 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 15 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
@@ -9,6 +9,7 @@ behaviour annotations.
 | `search_products` | No | No | `query`, `limit` (1–50, default 10), `cursor?`, `favoritesFirst` (default `false`), `category?`, `excludeCategory?`, `brand?`, `sort` (default `relevance`) |
 | `get_product` | No | No | `productId` |
 | `get_product_labels` | No | No | `productIds` (1–20) |
+| `choose_products` | No | No | `decisions` (1–10 of `question`, `productIds` (2–4), `suggested?`) |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
 | `get_cart` | Yes | No | — |
 | `preview_basket` | Yes | No | `items` (1–30 of `productId`, `quantity` ≥ 0, `cartItemId?`) |
@@ -80,8 +81,8 @@ Search uses the local favorites snapshot and never signs in to refresh it.
 Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`,
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
 `400 gr (peso escorrido 260 gr)`), `package`, `minimumText` (a minimum purchase such as
-`600 gr (3 un)`), `recommendedPrice`, `availability`, `brand`, `category`, `drainedPrice` and
-`favorite`.
+`600 gr (3 un)`), `recommendedPrice`, `availability`, `brand`, `category`, `drainedPrice`,
+`unitPrice`, `imageUrl` (the product photo on the website) and `favorite`.
 
 - `category` is the website's category path, such as
   `Supermercado/Congelados/Frutas e Legumes/Legumes`, and `brand` its brand; either is `null`
@@ -175,6 +176,28 @@ website can show a different availability than in the public catalogue, so the s
 read `available` signed out and `unavailable` in your account. A product page the website does
 not show to this session returns `not_found`: the product may not be sold in your area, or no
 longer be sold. Signed in and signed out can differ here too.
+
+### `choose_products`
+
+Lets the user pick between candidate products, for the choices an assistant should not make on
+its own: two brands of milk, 500 g against 1 kg. It takes all the open choices of a request at
+once, at most 10, each with a short `question`, 2 to 4 `productIds` and an optional `suggested`
+one, and changes nothing.
+
+In clients that support [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) (Claude,
+ChatGPT desktop, VS Code and others) it shows a picker: each choice as a row of products with
+photo, pack, price, price per kg or litre and availability, the suggestion preselected and a
+"none of these" option. The user confirms once, and the picker sends all the choices as one chat
+message, for example `My choices: 1. Leite meio gordo: Leite UHT Meio Gordo Mimosa (6 x 1 lt)
+[4421406]`. Other clients get the same choices as a numbered text list, and the user replies in
+the chat. Either way the assistant then changes the cart with `set_cart_item_quantity`.
+
+Products already seen in a search or `get_product` are shown without reading them again; others
+are read from their product page. `data`: `observedAt` and `decisions`, each with `question`,
+`suggested`, `options` and `failures` (candidates that could not be shown).
+
+The picker is a small page served as the resource `ui://continentept-mcp/choose-products.html`.
+It loads photos only from `www.continente.pt` and needs no script from anywhere else.
 
 ### `get_product_labels`
 

@@ -12,7 +12,7 @@ import { StorefrontClient, CatalogClient, FavoritesClient, CartClient, OrdersCli
 import { CatalogService, FavoritesService } from './services/catalog.js';
 import { CartService } from './services/cart.js';
 import { OrderService, PurchaseHistoryService } from './services/orders.js';
-import { registerShoppingTools } from './mcp/shopping.js';
+import { productPicker, registerShoppingTools } from './mcp/shopping.js';
 import type { ShoppingServices } from './mcp/shopping.js';
 import { SERVER_INSTRUCTIONS, basketPlannerPrompt } from './mcp/guide.js';
 import { updateNotice } from './services/updates.js';
@@ -56,6 +56,6 @@ export function createShoppingApplication(options: RuntimeOptions & { version: s
   const services = options.services ?? createShoppingServices(options);
   const notice = options.update ? updateNotice(options.update) : null;
   return createApplication({ version: options.version, tools: registerShoppingTools(services, options.update),
-    prompts: [basketPlannerPrompt], instructions: notice ? `${SERVER_INSTRUCTIONS}\n\n${notice}` : SERVER_INSTRUCTIONS,
+    prompts: [basketPlannerPrompt], resources: [productPicker], instructions: notice ? `${SERVER_INSTRUCTIONS}\n\n${notice}` : SERVER_INSTRUCTIONS,
     closeResources: () => services.session.shutdown?.() ?? services.session.run(() => services.session.closeBrowserSession()) });
 }

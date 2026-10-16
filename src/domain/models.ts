@@ -47,6 +47,8 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   /** Price per kg of drained weight, worked out from the price and the label's drained weight (`peso escorrido`). */
   drainedPrice: PriceTagSchema.nullable(),
   unitPrice: UnitPriceSchema.nullable(),
+  /** The product photo on the website; null when the page gives none. */
+  imageUrl: z.url().nullable(),
 });
 export type Product = z.infer<typeof ProductSchema>;
 
@@ -137,7 +139,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), unitPrice: UnitPriceSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), unitPrice: UnitPriceSchema.nullable(), imageUrl: z.url().nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),

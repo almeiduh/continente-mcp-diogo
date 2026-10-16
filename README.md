@@ -119,6 +119,7 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `search_products` | Search the catalogue in relevance order, with favorites marked and a cursor for more |
 | `get_product` | Price, pack size, availability and sale rules for one product |
 | `get_product_labels` | Ingredients, allergens and nutrition as the label declares them |
+| `choose_products` | Let the user pick between products, with photos where the client supports it |
 | `list_favorites` | Your saved favorites (`refresh: true` fetches the latest) |
 | `get_cart` | Cart lines, quantities, bags and totals |
 | `preview_basket` | What a list of changes would do and cost, without changing the cart |

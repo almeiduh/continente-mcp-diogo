@@ -6,7 +6,7 @@ import { checkRequest, inRequest, RequestScope, RequestStopped } from '../sessio
 import type { RequestOptions } from '../session/request.js';
 
 export interface ToolHandler {
-  readonly definition: { name: string; title?: string; description?: string; annotations?: ToolAnnotations };
+  readonly definition: { name: string; title?: string; description?: string; annotations?: ToolAnnotations; _meta?: Record<string, unknown> };
   readonly inputSchema: z.ZodType;
   readonly outputSchema?: z.ZodType;
   readonly cartMutation?: boolean;
@@ -20,10 +20,21 @@ export interface PromptHandler {
   readonly arguments?: Readonly<Record<string, string>>;
   render(args: Readonly<Record<string, string | undefined>>): GetPromptResult;
 }
+/** A fixed text resource, such as an MCP Apps view. */
+export interface ResourceHandler {
+  readonly uri: string;
+  readonly name: string;
+  readonly title?: string;
+  readonly description?: string;
+  readonly mimeType: string;
+  readonly text: string;
+  readonly meta?: Record<string, unknown>;
+}
 export interface McpServerOptions {
   readonly version: string;
   readonly tools: readonly ToolHandler[];
   readonly prompts?: readonly PromptHandler[];
+  readonly resources?: readonly ResourceHandler[];
   /** Usage guidance sent to clients when they connect. */
   readonly instructions?: string;
   readonly closeResources?: () => Promise<void>;
@@ -46,6 +57,14 @@ export class ContinenteMcpServer {
     this.server.server.onclose = () => { this.shutdown.abort(new RequestStopped('server_closed')); void this.closeResources().catch(() => {}); };
     this.registerTools();
     this.registerPrompts();
+    this.registerResources();
+  }
+  private registerResources(): void {
+    for (const resource of this.options.resources ?? []) {
+      const { uri, name, title, description, mimeType, text, meta } = resource;
+      this.server.registerResource(name, uri, { mimeType, ...(title ? { title } : {}), ...(description ? { description } : {}) },
+        async () => ({ contents: [{ uri, mimeType, text, ...(meta ? { _meta: meta } : {}) }] }));
+    }
   }
   private registerPrompts(): void {
     for (const prompt of this.options.prompts ?? []) {

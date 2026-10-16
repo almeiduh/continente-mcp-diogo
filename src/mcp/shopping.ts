@@ -1,12 +1,13 @@
 import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
-import type { ToolHandler } from './server.js';
+import type { ResourceHandler, ToolHandler } from './server.js';
+import { PICKER_HTML, PICKER_META, PICKER_MIME_TYPE, PICKER_URI } from './picker.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
 import type { BasketPreview, PriceTag, ProductId, ProductLabel, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure, parseProductReference } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
-import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchOptions, SearchResult } from '../services/catalog.js';
+import type { CatalogService, FavoritesService, FavoritesSnapshot, ProductCard, SearchOptions, SearchResult } from '../services/catalog.js';
 import type { CartService } from '../services/cart.js';
 import { BasketPreviewService } from '../services/preview.js';
 import { labelStatus } from '../parsers/label.js';
@@ -96,6 +97,22 @@ function formatProduct(product: ProductDetails): string {
     product.saleRules.status === 'available' ? `Sale rules: ${formatSaleRules(product.saleRules.rules)}`
       : `Sale rules unavailable: ${product.saleRules.error.message}`, `URL: ${product.url}`].join('\n');
 }
+type Choice = { question: string; suggested: ProductId | null; options: ProductCard[]; failures: { productId: string; error: ToolError }[] };
+function formatChoices(decisions: Choice[]): string {
+  const list = numbered(decisions.map(decision => {
+    const suggested = decision.options.find(option => option.productId === decision.suggested);
+    const options = decision.options.map((option, index) => `   ${String.fromCharCode(97 + index)}) ${option.name} — ${priced(option.price)}` +
+      `${option.packageText ? `, pack ${option.packageText}` : ''}${option.unitPrice && option.price?.per === 'item' ? ` (${euros(option.unitPrice.amount)}/${option.unitPrice.per})` : ''}` +
+      `, ${option.availability} [${option.productId}]`);
+    const failed = decision.failures.map(failure => `   (not shown: ${failure.productId}, ${failure.error.message})`);
+    return [`${decision.question}${suggested ? ` — suggested: ${suggested.name} [${suggested.productId}]` : ''}`, ...options, ...failed].join('\n');
+  }));
+  return `Choices for the user (shown as a picker with photos where the client supports it; otherwise ask the user to reply with their choices):\n\n${list}` +
+    '\n\nThe user\'s choices come back as a chat message. Then change the cart with set_cart_item_quantity.';
+}
+/** The picker view for choose_products, served as an MCP Apps resource. */
+export const productPicker: ResourceHandler = { uri: PICKER_URI, name: 'product-picker', title: 'Product picker',
+  description: 'Shows the products of choose_products with photos so the user can pick one for each choice.', mimeType: PICKER_MIME_TYPE, text: PICKER_HTML, meta: PICKER_META };
 const NUTRIENT_ORDER = ['energy_kcal', 'fat', 'saturated_fat', 'carbohydrates', 'sugars', 'fibre', 'protein', 'salt'] as const;
 const NUTRIENT_NAMES: Record<(typeof NUTRIENT_ORDER)[number], string> = { energy_kcal: 'energy', fat: 'fat', saturated_fat: 'of which saturates',
   carbohydrates: 'carbohydrates', sugars: 'of which sugars', fibre: 'fibre', protein: 'protein', salt: 'salt' };
@@ -203,6 +220,23 @@ export class ShoppingHandlers {
     const product = result.value;
     const partial = product.saleRules.status === 'unavailable' || product.price === null || product.availability === 'unknown';
     return response({ ...product, observedAt: this.observedAt(), catalogView: await this.catalogView() }, formatProduct(product), partial ? 'partial' : 'success');
+  }
+
+  async chooseProducts(decisions: { question: string; productIds: string[]; suggested?: string | undefined }[]): Promise<CallToolResult> {
+    const shown = [];
+    for (const decision of decisions) {
+      const options: ProductCard[] = []; const failures: { productId: string; error: ToolError }[] = [];
+      for (const reference of decision.productIds) {
+        const product = await this.services.catalog.productCard(reference);
+        if (!product.ok) failures.push({ productId: reference, error: product.error });
+        else if (!options.some(option => option.productId === product.value.productId)) options.push(product.value);
+      }
+      const suggested = decision.suggested === undefined ? null : parseProductReference(decision.suggested);
+      const pick = suggested?.ok && options.some(option => option.productId === suggested.value.productId) ? suggested.value.productId : null;
+      shown.push({ question: decision.question, suggested: pick, options, failures });
+    }
+    const partial = shown.some(decision => decision.failures.length > 0);
+    return response({ observedAt: this.observedAt(), decisions: shown }, formatChoices(shown), partial ? 'partial' : 'success');
   }
 
   async getProductLabels(references: string[]): Promise<CallToolResult> {
@@ -344,8 +378,8 @@ const NO_UPDATE_INFO: UpdateStatus = { currentVersion: null, latestVersion: null
 export function registerShoppingTools(services: ShoppingServices, update: UpdateStatus = NO_UPDATE_INFO): ToolHandler[] {
   const handlers = new ShoppingHandlers(services, update);
   function tool<T>(name: string, title: string, description: string, inputSchema: z.ZodType<T>, outputSchema: z.ZodType,
-    annotations: ToolAnnotations, execute: (args: T) => Promise<CallToolResult>, cartMutation = false): ToolHandler {
-    return { definition: { name, title, description, annotations }, inputSchema, outputSchema, cartMutation,
+    annotations: ToolAnnotations, execute: (args: T) => Promise<CallToolResult>, cartMutation = false, meta?: Record<string, unknown>): ToolHandler {
+    return { definition: { name, title, description, annotations, ...(meta ? { _meta: meta } : {}) }, inputSchema, outputSchema, cartMutation,
       execute: raw => services.session.run(() => execute(raw as T)) };
   }
   return [
@@ -361,6 +395,13 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
+    tool('choose_products', 'Let the user choose products',
+      'Show the user the open choices of a request side by side, with photos where the client supports it, so they pick one product for each. ' +
+      'Use it only when the user must decide between candidates, such as two milks or 500 g against 1 kg; settle everything else yourself (favorites, ' +
+      'usual purchases, cheapest per kg). Put all open choices of a list in one call, at most 10, each with 2 to 4 candidates and your suggestion. ' +
+      'It changes nothing: the choices come back as a chat message, then change the cart with set_cart_item_quantity.',
+      contracts.ChooseProductsInput, contracts.ChooseProductsOutput, READ, args => handlers.chooseProducts(args.decisions), false,
+      { ui: { resourceUri: PICKER_URI }, 'ui/resourceUri': PICKER_URI }),
     tool('get_product_labels', 'Get product labels',
       'Ingredients, allergens and nutrition for up to 20 products, as the website\'s copy of each label declares them: the ingredient list, ' +
       'the words it prints in capitals (how labels mark allergens), the allergen and "may contain traces" statements, and nutrients per 100 g or ml. ' +

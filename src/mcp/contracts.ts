@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ClearCartResultSchema, ProductLabelSchema, ProductIdSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
+import { MAX_REFERENCE_LENGTH, isProductReference, PriceTagSchema, UnitPriceSchema, BasketPreviewSchema, CartSchema, ClearCartResultSchema, ProductLabelSchema, ProductIdSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
   ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
@@ -109,6 +109,21 @@ export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData
 export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ favorites: FavoritesStatusSchema, update: UpdateStatusSchema }));
 
 export const GetProductInput = z.strictObject({ productId: ProductReferenceInput });
+export const ChooseProductsInput = z.strictObject({
+  decisions: z.array(z.strictObject({
+    question: z.string().trim().min(1).max(80).describe('What the user decides, in a few words, such as "Leite meio gordo" or "Manteiga de amendoim: 500 g ou 1 kg?".'),
+    productIds: z.array(ProductReferenceInput).min(2).max(4).describe('The candidates, 2 to 4 productIds from search_products or get_product.'),
+    suggested: ProductReferenceInput.optional().describe('The candidate you recommend; it starts selected.'),
+  })).min(1).max(10).describe('Every open choice of the request, at most 10, shown together in one picker.'),
+});
+const ChoiceOption = z.strictObject({ productId: ProductIdSchema, name: z.string(), packageText: z.string().nullable(), price: PriceTagSchema.nullable(),
+  unitPrice: UnitPriceSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']), imageUrl: z.url().nullable() });
+export const ChooseProductsData = z.strictObject({ ...observed, decisions: z.array(z.strictObject({
+  question: z.string(), suggested: ProductIdSchema.nullable(), options: z.array(ChoiceOption),
+  /** Candidates that could not be shown, such as a product the website no longer shows. */
+  failures: z.array(z.strictObject({ productId: z.string(), error: ToolErrorSchema })),
+})) });
+export const ChooseProductsOutput = outputSchema(ChooseProductsData);
 export const GetProductLabelsInput = z.strictObject({
   productIds: z.array(ProductReferenceInput).min(1).max(20).describe('Products to read the label of, at most 20.'),
 });

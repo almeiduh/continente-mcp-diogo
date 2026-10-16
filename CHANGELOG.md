@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `choose_products` lets the user pick between candidate products for the choices an assistant should not make alone. All open choices of a request go into one call (at most 10, 2 to 4 candidates each, with a suggestion). Clients that support MCP Apps, such as Claude and ChatGPT desktop, show a picker with photos, pack, price per kg or litre and availability, and send all the choices back as one chat message; other clients get a numbered text list. It changes nothing.
+- Search results and `get_product` return `imageUrl`, the product photo on the website.
+
 - Search results and `get_product` return `unitPrice`, the price to compare products by, with its `basis`: per drained kg, the website's own price per kg or litre, or the pack price divided by its net quantity.
 - `get_product_labels` returns `status` (`complete`, `partial`, `none` or `error`) and `missing` per product, and each label has `netContent` and `issues`. `nutrition_basis_mismatch` flags nutrients per 100 ml for a product whose net content is in grams, or the other way round; the values are kept as given, not converted.
 

@@ -121,8 +121,31 @@ export function decodeSearchCursor(cursor: string, query: string): Result<Search
   }
   return success({ start: parsed.data.start, grid });
 }
+/** What a picker shows for one product. */
+export interface ProductCard {
+  productId: ProductId; name: string; packageText: string | null; price: Product['price']; unitPrice: Product['unitPrice'];
+  availability: Product['availability']; imageUrl: string | null;
+}
+const card = (product: Pick<Product, 'productId' | 'name' | 'packageText' | 'price' | 'unitPrice' | 'availability' | 'imageUrl'>): ProductCard => ({
+  productId: product.productId, name: product.name, packageText: product.packageText, price: product.price, unitPrice: product.unitPrice,
+  availability: product.availability, imageUrl: product.imageUrl });
 export class CatalogService {
   constructor(private readonly client: CatalogGateway, private readonly favorites: FavoritesService) {}
+  /** Products seen in searches and product pages, so a picker can show them without loading them again. */
+  private readonly cards = new Map<ProductId, ProductCard>();
+  private rememberCard(product: ProductCard) {
+    this.cards.delete(product.productId); this.cards.set(product.productId, product);
+    if (this.cards.size > 1000) this.cards.delete(this.cards.keys().next().value!);
+  }
+  /** A product's picker card: the last one seen, or read from its product page. */
+  async productCard(reference: string): Promise<Result<ProductCard, ToolError>> {
+    const parsed = parseProductReference(reference);
+    if (!parsed.ok) return failure('invalid_input', 'Invalid product reference');
+    const known = this.cards.get(parsed.value.productId);
+    if (known) return success(known);
+    const product = await this.getProduct(parsed.value.productId);
+    return product.ok ? success(card(product.value)) : product;
+  }
   /** Label URLs seen on product pages, so a label can be read without loading the page again. */
   private readonly labels = new Map<ProductId, { url: string | null; name: string }>();
   async getProduct(reference: string) {
@@ -132,7 +155,10 @@ export class CatalogService {
     const response = await requestIO(() => this.client.fetchProductDetails!(reference));
     if (!response.ok) return response;
     const details = parseProductDetails(response.value.html, response.value.url, parsed.value.productId);
-    if (details.ok) this.rememberLabel(details.value.productId, productLabelUrl(response.value.html, details.value.productId), details.value.name);
+    if (details.ok) {
+      this.rememberLabel(details.value.productId, productLabelUrl(response.value.html, details.value.productId), details.value.name);
+      this.rememberCard(card(details.value));
+    }
     return details;
   }
   private rememberLabel(productId: ProductId, url: string | null, name: string) {
@@ -193,6 +219,7 @@ export class CatalogService {
     const more = fresh.length > limit || Boolean(response.value.nextCursor);
     const nextCursor = more && last ? encodeSearchCursor(query, { start: last.position + 1, grid: response.value.grid ?? null }) : null;
     const favorites = cache?.favorites ?? [];
+    for (const { product } of taken) this.rememberCard(card(product));
     return success({ scanned: fresh.length, unknownToFilter: dropped.size, favorites, page: {
       items: (() => {
         const ranked = rankProductsByFavorites(taken.map(entry => entry.product), favorites, options.favoritesFirst ?? false);

@@ -3,7 +3,7 @@ import { ProductDetailsSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, pa
 import type { ProductDetails, ProductId, Result, ToolError } from '../domain/index.js';
 import { success, failure } from '../domain/index.js';
 import { parseSaleRules } from './cart.js';
-import { minimumLabel, packageLabel, productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
+import { minimumLabel, packageLabel, productImageUrl, productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
 import { parsePackageLabel } from './package.js';
 import { record } from './records.js';
 
@@ -23,6 +23,8 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     try { const candidate = record(JSON.parse($(node).text())); if (candidate?.['@type'] === 'Product' && String(candidate.sku) === expectedId) products.push(candidate); } catch { /* Optional metadata stays unknown. */ }
   });
   const offer = products.length === 1 ? record(products[0]!.offers) : null;
+  const images = products.length === 1 ? [products[0]!.image].flat() : [];
+  const imageUrl = productImageUrl(images.find((image): image is string => typeof image === 'string'));
   const listed = typeof offer?.availability === 'string' ? offer.availability.replace(/^http:\/\//, 'https://') : '';
   // The page's own add button says whether the product can be bought; its structured data can still
   // say InStock when the button is disabled, so the button wins and the structured data is a fallback.
@@ -47,6 +49,7 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
     recommendedPrice: recommended.ok ? recommended.value : null,
+    imageUrl,
     availability: buyable !== null ? (buyable ? 'available' : 'unavailable') : listed === 'https://schema.org/InStock' ? 'available'
       : ['https://schema.org/OutOfStock', 'https://schema.org/Discontinued'].includes(listed) ? 'unavailable' : 'unknown',
     saleRules: rules.ok ? { status: 'available', rules: rules.value.rules } : { status: 'unavailable', error: rules.error },
