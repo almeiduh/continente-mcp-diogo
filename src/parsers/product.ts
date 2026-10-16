@@ -1,5 +1,5 @@
 import { load } from 'cheerio';
-import { ProductDetailsSchema, drainedPricePerKg, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
+import { ProductDetailsSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
 import type { ProductDetails, ProductId, Result, ToolError } from '../domain/index.js';
 import { success, failure } from '../domain/index.js';
 import { parseSaleRules } from './cart.js';
@@ -42,6 +42,8 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     ...reference.value, name, url,
     packageText: packageLabel(unit), package: parsePackageLabel(packageLabel(unit)), minimumText: minimumLabel(unit),
     drainedPrice: drainedPricePerKg(priceTag('.pwc-tile--price-primary'), parsePackageLabel(packageLabel(unit))),
+    unitPrice: unitPriceOf(priceTag('.pwc-tile--price-primary'), priceTag('.pwc-tile--price-secondary'), parsePackageLabel(packageLabel(unit)),
+      drainedPricePerKg(priceTag('.pwc-tile--price-primary'), parsePackageLabel(packageLabel(unit)))),
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
     recommendedPrice: recommended.ok ? recommended.value : null,

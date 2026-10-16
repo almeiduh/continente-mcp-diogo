@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Search results and `get_product` return `unitPrice`, the price to compare products by, with its `basis`: per drained kg, the website's own price per kg or litre, or the pack price divided by its net quantity.
+- `get_product_labels` returns `status` (`complete`, `partial`, `none` or `error`) and `missing` per product, and each label has `netContent` and `issues`. `nutrition_basis_mismatch` flags nutrients per 100 ml for a product whose net content is in grams, or the other way round; the values are kept as given, not converted.
+
+### Fixed
+
+- `sort: "unit_price"` put packs without a website price per kg or litre last, so a 1 l soy drink at €0.79 came after others at €3.32/l. They are now compared on their pack price over the net quantity. The search text says the sort covers the products returned.
+- `emphasised` no longer lists two-letter capitals such as `UE`, and the docs say plainly that it is typography, not an allergen list.
+
 ## [0.8.0] - 2026-10-16
 
 ### Added

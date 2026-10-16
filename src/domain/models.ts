@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolErrorSchema } from './errors.js';
 import { CartItemIdSchema, OrderIdSchema, OrderNumberSchema, ProductIdSchema, ProductReferenceSchema } from './identity.js';
-import { MoneySchema, PriceTagSchema } from './money.js';
+import { MoneySchema, PriceTagSchema, UnitPriceSchema } from './money.js';
 import { ObservedQuantitySchema, QuantitySchema, ProductSaleRulesSchema } from './quantity.js';
 
 const productDetails = {
@@ -46,6 +46,7 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   category: z.string().nullable(),
   /** Price per kg of drained weight, worked out from the price and the label's drained weight (`peso escorrido`). */
   drainedPrice: PriceTagSchema.nullable(),
+  unitPrice: UnitPriceSchema.nullable(),
 });
 export type Product = z.infer<typeof ProductSchema>;
 
@@ -136,7 +137,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), unitPrice: UnitPriceSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),
@@ -159,16 +160,24 @@ export const ProductLabelSchema = z.strictObject({
   regulatedName: z.string().nullable(),
   ingredients: z.string().nullable(),
   /**
-   * Words printed in capitals in the ingredients, which is how labels mark allergens, such as
-   * `SOJA` or `TRIGO`. Not every label does this, so read `ingredients` too. Null when the
-   * ingredients are missing or entirely in capitals.
+   * Words of three or more letters printed in capitals in the ingredients, such as `SOJA` or
+   * `TRIGO`. Labels emphasise allergens this way, but this is typography, not an allergen list:
+   * it also catches abbreviations such as `EDTA`, and not every label capitalises its allergens.
+   * Null when the ingredients are missing or entirely in capitals.
    */
   emphasised: z.array(z.string()).nullable(),
-  /** The label's own allergen statement, such as `Contém Leite.` */
+  /** What the website files as the allergen statement, such as `Contém Leite.`; sometimes another text, such as a nutrition claim. */
   allergenStatement: z.string().nullable(),
   /** The label's "may contain traces of" sentence, from the allergen statement or the ingredients. */
   mayContain: z.string().nullable(),
   storage: z.string().nullable(),
+  /** The pack's net content as the label states it, such as 500 g. */
+  netContent: QuantitySchema.nullable(),
+  /**
+   * Inconsistencies in the website's data, kept as given: `nutrition_basis_mismatch` when the
+   * nutrients are per 100 ml of a product whose net content is in grams, or the other way round.
+   */
+  issues: z.array(z.enum(['nutrition_basis_mismatch'])),
   nutrition: z.strictObject({
     /** The amount the values are for, such as 100 g or 100 ml; null when the label does not say. */
     per: QuantitySchema.nullable(),

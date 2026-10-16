@@ -96,15 +96,9 @@ function unknownToFilter(options: SearchOptions, product: Product): boolean {
     ...(brand !== undefined && product.brand !== null ? { brand } : {}) };
   return ((category !== undefined && product.category === null) || (brand !== undefined && product.brand === null)) && searchFilter(relaxed)(product);
 }
-/** The price used to compare products: per drained kg when the label gives a drained weight, else per kg or litre. */
-export function comparablePrice(product: Product): { per: 'kg' | 'l'; minorUnits: number } | null {
-  if (product.drainedPrice) return { per: 'kg', minorUnits: product.drainedPrice.amount.minorUnits };
-  for (const price of [product.price, product.secondaryPrice]) if (price && (price.per === 'kg' || price.per === 'l')) return { per: price.per, minorUnits: price.amount.minorUnits };
-  return null;
-}
 /** Cheapest first, per kg before per litre; products without a comparable price keep their order at the end. */
 function byUnitPrice<T extends Product>(products: T[]): T[] {
-  const priced = products.map((product, index) => ({ product, index, price: comparablePrice(product) }));
+  const priced = products.map((product, index) => ({ product, index, price: product.unitPrice ? { per: product.unitPrice.per, minorUnits: product.unitPrice.amount.minorUnits } : null }));
   return priced.sort((a, b) => !a.price || !b.price ? (a.price ? -1 : b.price ? 1 : a.index - b.index)
     : a.price.per !== b.price.per ? (a.price.per === 'kg' ? -1 : 1) : a.price.minorUnits - b.price.minorUnits || a.index - b.index).map(entry => entry.product);
 }

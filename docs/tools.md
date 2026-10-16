@@ -86,6 +86,10 @@ Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryP
 - `category` is the website's category path, such as
   `Supermercado/Congelados/Frutas e Legumes/Legumes`, and `brand` its brand; either is `null`
   when the results page does not give it.
+- `unitPrice` is the price to compare products by, with its `basis`: `drained` (per kg of drained
+  weight), `website` (the website's own price per kg or litre) or `pack` (the pack price divided
+  by its net quantity, when the website gives no price per kg or litre). It is `null` for packs
+  counted in units, such as `12 un`.
 - `drainedPrice` is the price per kg of drained weight (`peso escorrido`), worked out from the
   pack price and the label's drained weight. It is given only for a single pack whose label
   states one, such as a can of tuna. For preserves the website's own `secondaryPrice` per kg is
@@ -100,10 +104,10 @@ is unknown is left out by `category` and `brand`, and kept by `excludeCategory`;
 counts the products left out only for that reason, so a search without the filter can show them.
 Filtered searches read further pages, up to five, to fill `limit`.
 
-`sort: "unit_price"` orders the returned products cheapest first by price per drained kg when
-there is one, otherwise per kg, then per litre; products without such a price come last in
-their original order. Sorting reorders only the returned products, so cursors still continue
-exactly.
+`sort: "unit_price"` orders the returned products cheapest first by `unitPrice`, those per kg
+before those per litre; products without one come last in their original order. Sorting reorders
+only the products this call returns, not the whole catalogue, so cursors still continue exactly;
+raise `limit` to compare more candidates.
 
 `availability` is what the results page offers: `available` when the product has an add button
 and no "Indisponível" badge, `unavailable` when it has the badge and no button, and `unknown`
@@ -178,16 +182,21 @@ Ingredients, allergens and nutrition for up to 20 products, as the website's cop
 declares them. Call it only when a task needs them, such as checking that a product is vegan or
 free of an allergen, or adding up protein; `get_product` stays fast without it.
 
-`data`: `observedAt` and `labels`, one per product with `productId`, `name`, `label` and `error`.
-`label` is `null` when the website shows no label information, as for most fresh produce.
-Otherwise:
+`data`: `observedAt` and `labels`, one per product with `productId`, `name`, `label`, `error`,
+`status` and `missing`. `status` is `complete` (ingredients and nutrition), `partial` (one of
+them), `none` (neither on the website, as for most fresh produce and some packaged goods) or
+`error` (the label could not be read; see `error`). `missing` lists the fields the website does
+not give: `ingredients`, `allergenStatement` or `nutrition`. `label` is `null` when the website
+shows no label information at all. Otherwise:
 
 | Field | Meaning |
 | --- | --- |
 | `regulatedName` | The product's legal name |
+| `netContent` | The net content the label states, such as 500 g |
+| `issues` | Inconsistencies in the website's data, kept as given: `nutrition_basis_mismatch` when nutrients are per 100 ml of a product whose net content is in grams, or the other way round |
 | `ingredients` | The ingredient list, verbatim |
-| `emphasised` | Words printed in capitals in the ingredients, such as `SOJA` or `TRIGO`, which is how labels mark allergens |
-| `allergenStatement` | The label's own statement, such as `Contém Leite.` |
+| `emphasised` | Words of three or more letters printed in capitals in the ingredients, such as `SOJA` or `TRIGO`. Labels mark allergens this way, but this is typography, not an allergen list: it also catches abbreviations such as `EDTA` |
+| `allergenStatement` | What the website files as the allergen statement, such as `Contém Leite.`; sometimes another text, such as a nutrition claim |
 | `mayContain` | The "may contain traces of" sentence, from the statement or the ingredients |
 | `storage` | Storage instructions |
 | `nutrition` | `per` (such as 100 g or 100 ml) and `nutrients`, each with `name`, `key`, `amount` and `unit` |

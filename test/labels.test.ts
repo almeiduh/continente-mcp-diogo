@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ProductIdSchema } from '../src/domain/index.js';
-import { parseProductLabel, productLabelUrl } from '../src/parsers/label.js';
+import { labelStatus, parseProductLabel, productLabelUrl } from '../src/parsers/label.js';
 import { CatalogService } from '../src/services/catalog.js';
 import type { FavoritesService } from '../src/services/catalog.js';
 import { LabelsData } from '../src/mcp/contracts.js';
@@ -87,7 +87,35 @@ test('get_product_labels reports each product, with errors per product', async t
   assert.deepEqual(data.labels.map(item => [item.productId, item.error?.code ?? null]), [['00123', null], ['999', 'not_found']]);
   const text = textOf(result);
   assert.match(text, /the packaging prevails/);
-  assert.match(text, /Tofu \[00123\]\n   Ingredients: Água, SOJA, nigari/);
+  assert.match(text, /Tofu \[00123\] \(complete; not on the website: allergen statement\)\n   Ingredients: Água, SOJA, nigari/);
+  assert.deepEqual(data.labels.map(item => [item.status, item.missing]), [['complete', ['allergenStatement']], ['error', []]]);
   assert.match(text, /In capitals in the ingredients: SOJA\n   Nutrition per 100 g: energy 134 kcal, fat 7\.9 g, of which saturates 1\.3 g/);
   assert.match(text, /\[999\] — could not be read: The website does not show this product/);
+});
+
+test('a nutrition basis that contradicts the net content is flagged and kept as given', () => {
+  const lentils = parsed('lentils');
+  assert.deepEqual([lentils?.netContent, lentils?.nutrition?.per, lentils?.issues], [{ value: 100, unit: 'g' }, { value: 100, unit: 'ml' }, ['nutrition_basis_mismatch']]);
+  assert.ok(lentils?.nutrition?.nutrients.some(item => item.key === 'protein'));
+  // The website files a nutrition claim as the allergen statement here; it is passed on as given.
+  assert.equal(lentils?.allergenStatement, 'Alto teor de fibra e de proteína.');
+  assert.deepEqual([parsed('tofu')?.netContent, parsed('tofu')?.issues], [{ value: 100, unit: 'g' }, []]);
+  // The website gives the 6 x 1 l milk a net content of 6 g, with nutrients per 100 ml.
+  assert.deepEqual([parsed('milk')?.netContent, parsed('milk')?.issues], [{ value: 6, unit: 'g' }, ['nutrition_basis_mismatch']]);
+  assert.deepEqual(parsed('soy-granules')?.issues, []);
+});
+
+test('label status says whether the website gives ingredients and nutrition', () => {
+  assert.deepEqual(labelStatus(parsed('tofu')), { status: 'complete', missing: ['allergenStatement'] });
+  assert.deepEqual(labelStatus(parsed('milk')), { status: 'partial', missing: ['ingredients'] });
+  assert.deepEqual(labelStatus(parsed('banana')), { status: 'none', missing: ['ingredients', 'allergenStatement', 'nutrition'] });
+  // The oat flakes' label tab is empty on the website.
+  assert.equal(parsed('oats'), null);
+  assert.deepEqual(labelStatus(null), { status: 'none', missing: ['ingredients', 'allergenStatement', 'nutrition'] });
+});
+
+test('two-letter capitals such as UE are not reported as emphasised', () => {
+  const html = label('tofu').replace('&Aacute;gua, SOJA, nigari (cloreto de magn&eacute;sio natural).', '&Aacute;gua, SOJA*, nigari. *Agricultura UE. EDTA.');
+  assert.notEqual(html, label('tofu'));
+  assert.deepEqual(valueOf(parseProductLabel(html))?.emphasised, ['SOJA', 'EDTA']);
 });

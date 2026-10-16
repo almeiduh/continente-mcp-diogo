@@ -61,3 +61,27 @@ export function drainedPricePerKg(price: { amount: Money; per: string } | null, 
   if (!kilograms || kilograms <= 0) return null;
   return { amount: { currency: 'EUR' as const, minorUnits: Math.round(price.amount.minorUnits / kilograms) }, per: 'kg' as const };
 }
+
+export const UnitPriceSchema = z.strictObject({
+  amount: MoneySchema,
+  per: z.enum(['kg', 'l']),
+  /** `drained`: per kg of drained weight; `website`: the website's own price per kg or litre; `pack`: the pack price divided by its net quantity. */
+  basis: z.enum(['drained', 'website', 'pack']),
+});
+export type UnitPrice = z.infer<typeof UnitPriceSchema>;
+/**
+ * The price to compare products by: per drained kg when the label gives a drained weight, else the
+ * website's price per kg or litre, else the pack price divided by the pack's net quantity.
+ */
+export function unitPriceOf(price: { amount: Money; per: string } | null, secondaryPrice: { amount: Money; per: string } | null,
+  pack: { net: { value: number; unit: string } | null } | null, drainedPrice: { amount: Money; per: string } | null): UnitPrice | null {
+  if (drainedPrice?.per === 'kg') return { amount: drainedPrice.amount, per: 'kg', basis: 'drained' };
+  for (const candidate of [price, secondaryPrice]) {
+    if (candidate && (candidate.per === 'kg' || candidate.per === 'l')) return { amount: candidate.amount, per: candidate.per, basis: 'website' };
+  }
+  const net = pack?.net;
+  if (!price || price.per !== 'item' || !net || net.value <= 0) return null;
+  const amount = net.unit === 'g' ? { per: 'kg' as const, size: net.value / 1000 } : net.unit === 'kg' ? { per: 'kg' as const, size: net.value }
+    : net.unit === 'ml' ? { per: 'l' as const, size: net.value / 1000 } : net.unit === 'l' ? { per: 'l' as const, size: net.value } : null;
+  return amount ? { amount: { currency: 'EUR', minorUnits: Math.round(price.amount.minorUnits / amount.size) }, per: amount.per, basis: 'pack' } : null;
+}

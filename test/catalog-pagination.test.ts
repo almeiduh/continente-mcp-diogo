@@ -185,4 +185,9 @@ test('unit_price sorts the returned products by drained kg, kg or litre and keep
   assert.deepEqual(sorted.page.items.map(item => item.productId), ['5', '2', '1', '4', '3']);
   const relevance = valueOf(await service.searchProducts('tofu', 10, {}));
   assert.deepEqual(relevance.page.items.map(item => item.productId), ['1', '2', '3', '4', '5']);
+  // Packs without a website price per litre are compared on their pack price over the net quantity.
+  const drinks = [{ id: '6', category: food, brand: 'A', price: '1,09€', label: '3 x 200 ml' }, { id: '7', category: food, brand: 'B', price: '2,99€', label: '3 x 250 ml' },
+    { id: '8', category: food, brand: 'C', price: '0,79€', label: '1 lt' }, { id: '9', category: food, brand: 'D', price: '1,29€', label: '1 lt' }];
+  const soy = new CatalogService(new CatalogClient(double<StorefrontClient>(catalogue(drinks, 10))), favorites);
+  assert.deepEqual(valueOf(await soy.searchProducts('soja', 10, { sort: 'unit_price' })).page.items.map(item => item.productId), ['8', '9', '6', '7']);
 });

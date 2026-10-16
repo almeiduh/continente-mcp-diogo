@@ -116,6 +116,10 @@ export const LabelsData = z.strictObject({ ...observed, labels: z.array(z.strict
   productId: ProductIdSchema.nullable(), name: z.string().nullable(),
   /** Null when the website has no label information for the product, or when it could not be read (see error). */
   label: ProductLabelSchema.nullable(), error: ToolErrorSchema.nullable(),
+  /** `complete` (ingredients and nutrition), `partial` (one of them), `none` (neither on the website) or `error` (could not be read). */
+  status: z.enum(['complete', 'partial', 'none', 'error']),
+  /** Fields the website does not give for this product. */
+  missing: z.array(z.enum(['ingredients', 'allergenStatement', 'nutrition'])),
 })) });
 export const LabelsOutput = outputSchema(LabelsData);
 export const ProductDetailsData = ProductDetailsSchema.safeExtend({ ...observed, ...viewed });

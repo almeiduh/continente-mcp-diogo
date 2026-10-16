@@ -9,6 +9,7 @@ import { withAuthenticationRecovery } from '../services/recovery.js';
 import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchOptions, SearchResult } from '../services/catalog.js';
 import type { CartService } from '../services/cart.js';
 import { BasketPreviewService } from '../services/preview.js';
+import { labelStatus } from '../parsers/label.js';
 import type { PreviewItem } from '../services/preview.js';
 import type { OrderService, PurchaseHistoryService, OrderListOptions } from '../services/orders.js';
 
@@ -69,6 +70,7 @@ export function formatProductSearchResults(products: SearchResult['page']['items
   return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''}${product.availability === 'unavailable' ? ' (unavailable)' : ''} — ${priced(product.price)}` +
     `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}` +
     `${product.packageText ? `, pack ${product.packageText}` : ''}${product.drainedPrice ? ` (${priced(product.drainedPrice)} drained)` : ''}` +
+    `${product.unitPrice?.basis === 'pack' ? ` (${euros(product.unitPrice.amount)}/${product.unitPrice.per} from the pack size)` : ''}` +
     `${product.minimumText ? `, minimum ${product.minimumText}` : ''}` +
     `\n   productId: ${product.productId}${product.brand ? `, brand: ${product.brand}` : ''}${product.category ? `, category: ${product.category}` : ''}`));
 }
@@ -102,17 +104,22 @@ function formatNutrition(nutrition: NonNullable<ProductLabel['nutrition']>): str
   const others = nutrition.nutrients.filter(item => item.key === null).length;
   return `Nutrition per ${nutrition.per ? amount(nutrition.per) : 'unstated amount'}: ${main.join(', ')}${others ? ` (and ${others} more in the structured result)` : ''}`;
 }
-function formatLabels(labels: { productId: string | null; name: string | null; label: ProductLabel | null; error: ToolError | null }[]): string {
+type LabelEntry = { productId: ProductId | null; name: string | null; label: ProductLabel | null; error: ToolError | null;
+  status: 'complete' | 'partial' | 'none' | 'error'; missing: ('ingredients' | 'allergenStatement' | 'nutrition')[] };
+const MISSING_NAMES = { ingredients: 'ingredients', allergenStatement: 'allergen statement', nutrition: 'nutrition' } as const;
+function formatLabels(labels: LabelEntry[]): string {
   const list = numbered(labels.map(item => {
     const head = `${item.name ?? 'Unknown product'} [${item.productId ?? 'invalid reference'}]`;
     if (item.error) return `${head} — could not be read: ${item.error.message}`;
     const label = item.label;
-    if (!label || (!label.ingredients && !label.allergenStatement && !label.nutrition)) return `${head} — the website shows no ingredients, allergens or nutrition`;
-    return [head, ...(label.ingredients ? [`Ingredients: ${label.ingredients}`] : []),
+    if (!label || item.status === 'none') return `${head} — the website shows no ingredients or nutrition for it`;
+    return [`${head} (${item.status}${item.missing.length ? `; not on the website: ${item.missing.map(key => MISSING_NAMES[key]).join(', ')}` : ''})`,
+      ...(label.ingredients ? [`Ingredients: ${label.ingredients}`] : []),
       ...(label.emphasised?.length ? [`In capitals in the ingredients: ${label.emphasised.join(', ')}`] : []),
       ...(label.allergenStatement ? [`Allergen statement: ${label.allergenStatement}`] : []),
       ...(label.mayContain && label.mayContain !== label.allergenStatement ? [`May contain: ${label.mayContain}`] : []),
-      ...(label.nutrition ? [formatNutrition(label.nutrition)] : [])].join('\n   ');
+      ...(label.nutrition ? [formatNutrition(label.nutrition)] : []),
+      ...(label.issues.includes('nutrition_basis_mismatch') ? [`Caution: the website gives these nutrients per ${label.nutrition?.per ? amount(label.nutrition.per) : '?'} although the net content is ${label.netContent ? amount(label.netContent) : '?'}; kept as given, not converted.`] : [])].join('\n   ');
   }));
   return `Product labels, from the website's copy (the packaging prevails; nothing here is inferred):\n\n${list}`;
 }
@@ -180,7 +187,7 @@ export class ShoppingHandlers {
     const { page, scanned, favorites, unknownToFilter } = result.value;
     const partial = page.completeness === 'partial';
     const text = page.items.length
-      ? `${page.items.length} of ${scanned} scanned products for "${query}":\n\n${formatProductSearchResults(page.items)}`
+      ? `${page.items.length} of ${scanned} scanned products for "${query}"${options.sort === 'unit_price' ? ', these sorted by unit price' : ''}:\n\n${formatProductSearchResults(page.items)}`
       : `No products found for "${query}".`;
     return response({ observedAt: this.observedAt(), catalogView: await this.catalogView(), products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length,
       completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor, unknownToFilter },
@@ -199,13 +206,14 @@ export class ShoppingHandlers {
   }
 
   async getProductLabels(references: string[]): Promise<CallToolResult> {
-    const labels: { productId: ProductId | null; name: string | null; label: ProductLabel | null; error: ToolError | null }[] = [];
+    const labels: LabelEntry[] = [];
     for (const reference of references) {
       const parsed = parseProductReference(reference);
-      if (!parsed.ok) { labels.push({ productId: null, name: null, label: null, error: parsed.error }); continue; }
+      if (!parsed.ok) { labels.push({ productId: null, name: null, label: null, error: parsed.error, status: 'error', missing: [] }); continue; }
       const { productId } = parsed.value;
       const result = await this.services.catalog.getProductLabel(productId);
-      labels.push(result.ok ? { productId, name: result.value.name, label: result.value.label, error: null } : { productId, name: null, label: null, error: result.error });
+      labels.push(result.ok ? { productId, name: result.value.name, label: result.value.label, error: null, ...labelStatus(result.value.label) }
+        : { productId, name: null, label: null, error: result.error, status: 'error' as const, missing: [] });
     }
     return response({ observedAt: this.observedAt(), labels }, formatLabels(labels));
   }

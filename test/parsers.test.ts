@@ -15,7 +15,8 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
     price: { amount: eur(129), per: 'item' }, url: 'https://www.continente.pt/produto/leite-00123.html',
     secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' },
     package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false }, availability: 'available',
-    brand: 'Mimosa', category: 'Supermercado/Laticínios e Ovos/Leite/Leite Meio Gordo', drainedPrice: null });
+    brand: 'Mimosa', category: 'Supermercado/Laticínios e Ovos/Leite/Leite Meio Gordo', drainedPrice: null,
+    unitPrice: { amount: eur(129), per: 'l', basis: 'website' } });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
   assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null);
@@ -49,6 +50,19 @@ test('the price per drained kg is worked out only for a single pack with a drain
     `<span class="pwc-tile--price-primary">${price}</span><span class="pwc-tile--quantity">emb. ${label}</span></div></main>`)).products[0]).drainedPrice;
   assert.deepEqual(tuna('120 gr (peso escorrido 78 gr)'), { amount: { currency: 'EUR', minorUnits: 1474 }, per: 'kg' });
   assert.equal(tuna('120 gr'), null); assert.equal(tuna('3 x 80 gr'), null); assert.equal(tuna('120 gr (peso escorrido 78 gr)', '1,15€/kg'), null);
+});
+test('the unit price is per drained kg, else the website\'s per kg or litre, else the pack price over its net quantity', () => {
+  const tile = (price: string, secondary: string, label: string) => present(valueOf(parseProductSearchPage(`<main><div class="ct-inner-tile-wrap">` +
+    `<a href="/produto/p-00123.html">P</a><span class="pwc-tile--price-primary">${price}</span>` +
+    `${secondary ? `<span class="pwc-tile--price-secondary">${secondary}</span>` : ''}<span class="pwc-tile--quantity">emb. ${label}</span></div></main>`)).products[0]).unitPrice;
+  assert.deepEqual(tile('0,79€', '', '1 lt'), { amount: eur(79), per: 'l', basis: 'pack' });
+  assert.deepEqual(tile('7,99€', '', '1 kg'), { amount: eur(799), per: 'kg', basis: 'pack' });
+  assert.deepEqual(tile('1,09€', '', '3 x 200 ml'), { amount: eur(182), per: 'l', basis: 'pack' });
+  // A per-piece "secondary" price on a 500 g jar (seen on the site) is not a per-kg price; the pack decides.
+  assert.deepEqual(tile('4,79€', '9,58€/un', '500 gr'), { amount: eur(958), per: 'kg', basis: 'pack' });
+  assert.deepEqual(tile('2,49€', '4,98€/kg', '500 gr'), { amount: eur(498), per: 'kg', basis: 'website' });
+  assert.deepEqual(tile('1,15€', '13,53€/kg', '120 gr (peso escorrido 78 gr)'), { amount: eur(1474), per: 'kg', basis: 'drained' });
+  assert.equal(tile('3,00€', '', '12 un'), null);
 });
 test('search availability needs the badge and the add button to agree', () => {
   const tile = (badge: string, button: boolean) => `<main><div class="ct-inner-tile-wrap"><a href="/produto/leite-00123.html">Leite</a>` +

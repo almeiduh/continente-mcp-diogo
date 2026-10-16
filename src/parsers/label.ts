@@ -28,8 +28,8 @@ function field($: CheerioAPI, selector: string): string | null {
   const value = parts.length > 1 ? parts.slice(1).join(' ') : '';
   return value && value !== '.' ? value : null;
 }
-const UNITS: Record<string, string> = { KJO: 'kJ', E14: 'kcal', GRM: 'g', MGM: 'mg', MC: 'µg', MLT: 'ml' };
-const UNIT_NAMES: Record<string, string> = { grama: 'g', miligrama: 'mg', micrograma: 'µg', quilojoule: 'kJ', quilocaloria: 'kcal', mililitro: 'ml' };
+const UNITS: Record<string, string> = { KJO: 'kJ', E14: 'kcal', GRM: 'g', KGM: 'kg', MGM: 'mg', MC: 'µg', MLT: 'ml', LTR: 'l' };
+const UNIT_NAMES: Record<string, string> = { grama: 'g', quilograma: 'kg', miligrama: 'mg', micrograma: 'µg', quilojoule: 'kJ', quilocaloria: 'kcal', mililitro: 'ml', litro: 'l' };
 /** "(GRM) Grama" or "Grama" to g; anything else is kept as printed. */
 function unit(label: string): string {
   const code = /^\((\w+)\)/.exec(label)?.[1];
@@ -58,19 +58,38 @@ function nutrition($: CheerioAPI): ProductLabel['nutrition'] {
 /** Capitalised words in the ingredients: SOJA, TRIGO, LEITE. Meaningless when everything is in capitals. */
 function emphasised(ingredients: string | null): string[] | null {
   if (!ingredients || !/\p{Ll}/u.test(ingredients)) return null;
-  return [...new Set(ingredients.match(/\p{Lu}{2,}(?:[ -]\p{Lu}{2,})*/gu) ?? [])].filter(word => !/^(?:E|B|BC)$/.test(word));
+  // Two-letter capitals are abbreviations such as UE or PT; allergen names are longer (OVO, SOJA, LEITE).
+  return [...new Set(ingredients.match(/\p{Lu}{2,}(?:[ -]\p{Lu}{2,})*/gu) ?? [])].filter(word => word.length >= 3);
 }
 const mayContain = (...sources: (string | null)[]) => sources.flatMap(source => source?.match(/[^.]*\b(?:pode conter|vest[ií]gios)[^.]*\.?/i) ?? []).map(text)[0] ?? null;
 
+const DIMENSIONS: Record<string, 'mass' | 'volume'> = { g: 'mass', kg: 'mass', ml: 'volume', l: 'volume' };
+/** "100" with "(GRM) Grama" as a quantity; null unless both are recognised. */
+function netContent($: CheerioAPI): ProductLabel['netContent'] {
+  const value = field($, '.net-content'); const printed = field($, '.net-content--uom');
+  const normalised = printed ? unit(printed) : null;
+  return value && /^\d+(?:,\d+)?$/.test(value) && normalised && normalised in DIMENSIONS
+    ? { value: Number(value.replace(',', '.')), unit: normalised as 'g' | 'kg' | 'ml' | 'l' } : null;
+}
 /** Parse the label tab. A page without any label field is reported as missing rather than as an empty label. */
 export function parseProductLabel(html: string): Result<ProductLabel | null, ToolError> {
   const $ = load(html);
   if (!$('.ct-pdp--description-content, .tab-row-details').length) return failure('invalid_data', 'The product label was not recognised');
   const ingredients = field($, '.ingredients');
   const allergenStatement = field($, '.allergen-statement');
+  const facts = nutrition($); const net = netContent($);
+  const mismatch = facts?.per && net && DIMENSIONS[facts.per.unit] !== DIMENSIONS[net.unit];
   const label = { regulatedName: field($, '.regulated-product-name'), ingredients, emphasised: emphasised(ingredients), allergenStatement,
-    mayContain: mayContain(allergenStatement, ingredients), storage: field($, '.storage-instruction'), nutrition: nutrition($) };
+    mayContain: mayContain(allergenStatement, ingredients), storage: field($, '.storage-instruction'), netContent: net,
+    issues: mismatch ? ['nutrition_basis_mismatch' as const] : [], nutrition: facts };
   if (!label.ingredients && !label.allergenStatement && !label.nutrition && !label.regulatedName) return success(null);
   const parsed = ProductLabelSchema.safeParse(label);
   return parsed.success ? success(parsed.data) : failure('invalid_data', 'The product label was not recognised');
+}
+
+/** How much of a label the website gives: complete with ingredients and nutrition, partial with one of them, none with neither. */
+export function labelStatus(label: ProductLabel | null): { status: 'complete' | 'partial' | 'none'; missing: ('ingredients' | 'allergenStatement' | 'nutrition')[] } {
+  const missing = label ? (['ingredients', 'allergenStatement', 'nutrition'] as const).filter(key => label[key] === null) : ['ingredients' as const, 'allergenStatement' as const, 'nutrition' as const];
+  const core = label ? [label.ingredients, label.nutrition].filter(value => value !== null).length : 0;
+  return { status: core === 2 ? 'complete' : core === 1 ? 'partial' : 'none', missing: [...missing] };
 }

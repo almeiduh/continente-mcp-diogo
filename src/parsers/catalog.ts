@@ -1,5 +1,5 @@
 import { load } from 'cheerio';
-import { FavoriteProductSchema, ProductSchema, drainedPricePerKg, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
+import { FavoriteProductSchema, ProductSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
 import type { FavoriteProduct, PriceTag, Product, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parsePackageLabel } from './package.js';
@@ -91,10 +91,12 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
     const addButton = card.find('button.js-add-to-cart').length > 0;
     const availability = badge.length !== 1 ? 'unknown' : badge.hasClass('d-none') ? (addButton ? 'available' : 'unknown') : addButton ? 'unknown' : 'unavailable';
     const facts = tileFacts(card.closest('.product-tile').attr('data-product-tile-impression'), reference.value.productId);
+    const pack = parsePackageLabel(packageLabel(quantity));
+    const drained = drainedPricePerKg(main.price, pack);
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
       secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
-      recommendedPrice: recommended.price, availability, ...facts,
-      drainedPrice: drainedPricePerKg(main.price, parsePackageLabel(packageLabel(quantity))) }, 'product');
+      recommendedPrice: recommended.price, availability, ...facts, drainedPrice: drained,
+      unitPrice: unitPriceOf(main.price, secondary.price, pack, drained) }, 'product');
     if (product.ok) entries.push({ product: product.value, position: start + index });
     else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });
