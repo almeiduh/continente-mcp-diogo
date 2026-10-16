@@ -14,11 +14,13 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
   assert.deepEqual(page.products[0], { productId: '00123', productSlug: 'leite-00123', name: 'Leite Meio Gordo',
     price: { amount: eur(129), per: 'item' }, url: 'https://www.continente.pt/produto/leite-00123.html',
     secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' },
-    package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false }, availability: 'available' });
+    package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false }, availability: 'available',
+    brand: 'Mimosa', category: 'Supermercado/Laticínios e Ovos/Leite/Leite Meio Gordo', drainedPrice: null });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
   assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null);
-  assert.equal(banana.availability, 'unavailable'); assert.equal(present(page.products[2]).availability, 'unknown'); assert.equal(banana.recommendedPrice, null);
+  assert.equal(banana.availability, 'unavailable'); assert.equal(present(page.products[2]).availability, 'unknown');
+  assert.deepEqual([banana.brand, banana.category], [null, null]); assert.equal(banana.recommendedPrice, null);
   assert.equal(present(page.products[2]).price, null);
   assert.equal(valueOf(parseProductSearchPage(fixture('catalog') + fixture('catalog'))).products.length, 3);
 });
@@ -32,6 +34,21 @@ test('one unreadable result is reported without failing the rest of the page', (
   ]);
   const broken = parseProductSearchPage('<main><div class="ct-inner-tile-wrap"><span>no product</span></div></main>');
   assert.equal(broken.ok, false);
+});
+test('tile brand and category come only from data naming the same product', () => {
+  const tile = (impression: string) => `<main><div class="product-tile" data-product-tile-impression='${impression}'><div class="ct-inner-tile-wrap">` +
+    `<a href="/produto/leite-00123.html">Leite</a></div></div></main>`;
+  const facts = (impression: string) => { const product = present(valueOf(parseProductSearchPage(tile(impression))).products[0]); return [product.brand, product.category]; };
+  assert.deepEqual(facts('{"id":"00123","brand":"Catfield","category":"Animais/Gato/Areias e Absorventes"}'), ['Catfield', 'Animais/Gato/Areias e Absorventes']);
+  assert.deepEqual(facts('{"id":"999","brand":"Other","category":"Other"}'), [null, null]);
+  assert.deepEqual(facts('{"id":"00123","brand":"","category":"undefined"}'), [null, null]);
+  assert.deepEqual(facts('not json'), [null, null]);
+});
+test('the price per drained kg is worked out only for a single pack with a drained weight', () => {
+  const tuna = (label: string, price = '1,15€') => present(valueOf(parseProductSearchPage(`<main><div class="ct-inner-tile-wrap"><a href="/produto/atum-00123.html">Atum</a>` +
+    `<span class="pwc-tile--price-primary">${price}</span><span class="pwc-tile--quantity">emb. ${label}</span></div></main>`)).products[0]).drainedPrice;
+  assert.deepEqual(tuna('120 gr (peso escorrido 78 gr)'), { amount: { currency: 'EUR', minorUnits: 1474 }, per: 'kg' });
+  assert.equal(tuna('120 gr'), null); assert.equal(tuna('3 x 80 gr'), null); assert.equal(tuna('120 gr (peso escorrido 78 gr)', '1,15€/kg'), null);
 });
 test('search availability needs the badge and the add button to agree', () => {
   const tile = (badge: string, button: boolean) => `<main><div class="ct-inner-tile-wrap"><a href="/produto/leite-00123.html">Leite</a>` +

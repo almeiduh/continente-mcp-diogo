@@ -1,7 +1,7 @@
 import { requestIO, requestTimeout, checkRequest, RequestStopped, reportProgress } from '../session/request.js';
 import { BrowserUnavailable } from '../session/chromium.js';
 import type { CatalogGateway, FavoritesGateway, CartGateway, OrdersGateway, PreparedCartMutation, RetrievedPages, SearchResume } from '../ports.js';
-import type { Result, ToolError } from '../domain/index.js';
+import type { Product, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parseProductSearchPage, parseSearchPagination, parseFavoritesPageData, STOREFRONT_ORIGIN, storefrontUrl } from '../parsers/catalog.js';
 import type { BrowserLease, StorefrontSession } from '../session/browser.js';
@@ -79,19 +79,22 @@ export class CatalogClient implements CatalogGateway {
    * at a position of the full list: from the results grid when its URL is known, otherwise from
    * the first page, whose earlier results the caller drops.
    */
-  async searchProducts(query: string, limit: number, resume?: SearchResume): Promise<Result<RetrievedPages, ToolError>> {
+  async searchProducts(query: string, limit: number, resume?: SearchResume, accept: (product: Product) => boolean = () => true): Promise<Result<RetrievedPages, ToolError>> {
     const from = resume?.start ?? 0;
     const resumeUrl = resume?.grid ? searchGridUrl(resume.grid, from) : null;
     const first = resumeUrl ? await readContinuation(this.site, resumeUrl)
       : await this.site.html(`/pesquisa/?q=${encodeURIComponent(query)}`, '.ct-inner-tile-wrap, .search-noresults-wrapper, .search-no-results, [data-search-empty]');
     if (!first.ok) return first;
-    const pages: string[] = []; const starts: number[] = []; const failures: ToolError[] = []; const ids = new Set<string>(); const visited = new Set<string>();
+    const pages: string[] = []; const starts: number[] = []; const failures: ToolError[] = []; const ids = new Set<string>(); const seen = new Set<string>(); const visited = new Set<string>();
     let html = first.value; let start = resumeUrl ? from : 0; let grid = resume?.grid ?? null; let nextCursor: string | null = null;
     for (let index = 0; index < 5; index++) {
       const parsed = parseProductSearchPage(html, start);
       if (!parsed.ok) { if (!pages.length) return parsed; failures.push(parsed.error); break; }
-      const previousCount = ids.size;
-      parsed.value.products.forEach((product, position) => { if ((parsed.value.positions[position] ?? 0) >= from) ids.add(product.productId); });
+      const previousCount = seen.size;
+      parsed.value.products.forEach((product, position) => {
+        seen.add(product.productId);
+        if ((parsed.value.positions[position] ?? 0) >= from && accept(product)) ids.add(product.productId);
+      });
       pages.push(html); starts.push(start);
       reportProgress(pages.length, 5, 'Reading catalogue pages');
       const continuation = parseSearchPagination(html);
@@ -99,7 +102,7 @@ export class CatalogClient implements CatalogGateway {
       nextCursor = continuation.value?.url ?? null;
       if (continuation.value) grid ??= searchGridBase(continuation.value.url);
       if (!continuation.value || ids.size >= limit) break;
-      if (visited.has(continuation.value.url) || (index > 0 && ids.size === previousCount)) { failures.push(failure('invalid_data', 'Search pagination did not advance').error); break; }
+      if (visited.has(continuation.value.url) || (index > 0 && seen.size === previousCount)) { failures.push(failure('invalid_data', 'Search pagination did not advance').error); break; }
       if (index === 4) break;
       visited.add(continuation.value.url);
       const response = await readContinuation(this.site, continuation.value.url);

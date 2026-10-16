@@ -6,7 +6,7 @@ behaviour annotations.
 
 | Tool | Login | Changes the cart | Inputs |
 | --- | --- | --- | --- |
-| `search_products` | No | No | `query`, `limit` (1–50, default 10), `cursor?`, `favoritesFirst` (default `false`) |
+| `search_products` | No | No | `query`, `limit` (1–50, default 10), `cursor?`, `favoritesFirst` (default `false`), `category?`, `excludeCategory?`, `brand?`, `sort` (default `relevance`) |
 | `get_product` | No | No | `productId` |
 | `get_product_labels` | No | No | `productIds` (1–20) |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
@@ -79,7 +79,29 @@ Search uses the local favorites snapshot and never signs in to refresh it.
 Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`,
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
 `400 gr (peso escorrido 260 gr)`), `package`, `minimumText` (a minimum purchase such as
-`600 gr (3 un)`), `recommendedPrice`, `availability` and `favorite`.
+`600 gr (3 un)`), `recommendedPrice`, `availability`, `brand`, `category`, `drainedPrice` and
+`favorite`.
+
+- `category` is the website's category path, such as
+  `Supermercado/Congelados/Frutas e Legumes/Legumes`, and `brand` its brand; either is `null`
+  when the results page does not give it.
+- `drainedPrice` is the price per kg of drained weight (`peso escorrido`), worked out from the
+  pack price and the label's drained weight. It is given only for a single pack whose label
+  states one, such as a can of tuna. For preserves the website's own `secondaryPrice` per kg is
+  often already per drained kg; the two differ when the website works from another weight than
+  the label (seen on one can of tuna: €13.53/kg against €14.74/kg from its 78 g drained).
+
+Filters narrow a search to what is asked for. `category` keeps products whose category path
+contains the text (`Congelados/Frutas e Legumes`, `Mercearia`), `excludeCategory` leaves out
+those that do (`Animais`, so "tofu" does not return cat litter), and `brand` keeps products whose
+brand contains it (`Continente`). Case and accents are ignored. A product whose category or brand
+is unknown is left out by `category` and `brand`, and kept by `excludeCategory`. Filtered searches
+read further pages, up to five, to fill `limit`.
+
+`sort: "unit_price"` orders the returned products cheapest first by price per drained kg when
+there is one, otherwise per kg, then per litre; products without such a price come last in
+their original order. Sorting reorders only the returned products, so cursors still continue
+exactly.
 
 `availability` is what the results page offers: `available` when the product has an add button
 and no "Indisponível" badge, `unavailable` when it has the badge and no button, and `unknown`
@@ -127,7 +149,7 @@ only works with the query it came from.
 ### `get_product`
 
 Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `recommendedPrice`,
-`packageText`, `package` and `minimumText` (as in `search_products`), `availability`
+`packageText`, `package`, `minimumText` and `drainedPrice` (as in `search_products`), `availability`
 (`available`, `unavailable` or `unknown`) and `saleRules`:
 
 ```json

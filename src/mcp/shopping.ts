@@ -68,8 +68,9 @@ function errorResult(error: ToolError, mutation?: MutationSummary, signIn?: Sign
 export function formatProductSearchResults(products: SearchResult['page']['items']): string {
   return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''}${product.availability === 'unavailable' ? ' (unavailable)' : ''} — ${priced(product.price)}` +
     `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}` +
-    `${product.packageText ? `, pack ${product.packageText}` : ''}` +
-    `${product.minimumText ? `, minimum ${product.minimumText}` : ''}\n   productId: ${product.productId}`));
+    `${product.packageText ? `, pack ${product.packageText}` : ''}${product.drainedPrice ? ` (${priced(product.drainedPrice)} drained)` : ''}` +
+    `${product.minimumText ? `, minimum ${product.minimumText}` : ''}` +
+    `\n   productId: ${product.productId}${product.brand ? `, brand: ${product.brand}` : ''}${product.category ? `, category: ${product.category}` : ''}`));
 }
 function formatSaleRules(rules: ProductSaleRules): string {
   const bounds = [rules.minimum && `minimum ${amount(rules.minimum)}`, rules.maximum && `maximum ${amount(rules.maximum)}`,
@@ -333,8 +334,11 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
   return [
     tool('search_products', 'Search products',
       'Search the Continente.pt catalogue. No login needed. Results keep the website\'s relevance order and mark saved favorites; pass favoritesFirst to move them to the top. ' +
-      'Each shows its price with what it is for (per item, piece, kg or litre), the pack size and productId. Pass nextCursor back as cursor, with the same query, for the next products.',
-      contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit, { ...(args.cursor ? { cursor: args.cursor } : {}), favoritesFirst: args.favoritesFirst })),
+      'Each shows its price with what it is for (per item, piece, kg or litre), the pack size, brand, category and productId. Filter with category, excludeCategory or brand, ' +
+      'and sort by unit_price to compare packs. Pass nextCursor back as cursor, with the same query, for the next products.',
+      contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit, { ...(args.cursor ? { cursor: args.cursor } : {}), favoritesFirst: args.favoritesFirst,
+        ...(args.category ? { category: args.category } : {}), ...(args.excludeCategory ? { excludeCategory: args.excludeCategory } : {}),
+        ...(args.brand ? { brand: args.brand } : {}), sort: args.sort })),
     tool('get_product', 'Get product',
       'Get one product by productId: price, pack size, availability and sale rules (sale unit, minimum, maximum and step). ' +
       'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +

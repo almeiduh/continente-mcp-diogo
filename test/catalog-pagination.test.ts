@@ -127,3 +127,55 @@ test('favorites continuation failures, loops, missing products and mutation URLs
   const result = valueOf((await new FavoritesClient(double<StorefrontClient>(capped)).fetchFavorites()));
   assert.equal(result.pages.length, 20); assert.equal(capped.urls.length, 19); assert.equal(result.completeness, 'partial');
 });
+
+interface TileSpec { id: string; category: string; brand: string; price: string; label?: string }
+/** Like `grid`, with each tile's analytics data, price and pack label. */
+function catalogue(specs: TileSpec[], pageSize: number) {
+  const slice = (start: number, size: number) => {
+    const end = Math.min(start + size, specs.length);
+    return specs.slice(start, end).map(spec => `<div class="product-tile" data-product-tile-impression='${JSON.stringify({ id: spec.id, brand: spec.brand, category: spec.category })}'>` +
+      `<div class="ct-inner-tile-wrap"><a href="/produto/product-${spec.id}.html">Product ${spec.id}</a><span class="pwc-tile--price-primary">${spec.price}</span>` +
+      `${spec.label ? `<span class="pwc-tile--quantity">emb. ${spec.label}</span>` : ''}</div></div>`).join('') +
+      (end < specs.length ? `<button data-url="/on/demandware.store/Sites-continente-Site/default/Search-UpdateGrid?q=tofu&amp;start=${end}&amp;sz=${size}">More</button>` : '');
+  };
+  const urls: string[] = [];
+  return { urls, async html() { return ok(slice(0, pageSize)); }, async io<T>(_lease: unknown, operation: () => Promise<T>) { return operation(); },
+    session: { async ensureReady() { return { context: { request: { async get(url: string) {
+      urls.push(url); const params = new URL(url).searchParams;
+      return { ok: () => true, status: () => 200, url: () => url, async text() { return slice(Number(params.get('start')), Number(params.get('sz'))); } };
+    } } } }; } } };
+}
+const food = 'Supermercado/Frescos/Tofu'; const pets = 'Animais/Gato/Areias e Absorventes';
+test('category and brand filters keep reading pages until enough products match', async () => {
+  const specs = [{ id: '1', category: pets, brand: 'Catfield', price: '7,99€' }, { id: '2', category: pets, brand: 'Catfield', price: '6,99€' },
+    { id: '3', category: food, brand: 'Continente', price: '1,99€' }, { id: '4', category: pets, brand: 'Catfield', price: '5,99€' },
+    { id: '5', category: food, brand: 'Joya', price: '2,49€' }, { id: '6', category: 'Supermercado/Laticínios e Ovos/Iogurtes', brand: 'Continente', price: '0,99€' }];
+  const favorites = double<FavoritesService>({ async loadCachedFavorites() { return null; } });
+  const run = async (options: object, limit = 2) => {
+    const source = catalogue(specs, 2);
+    const result = valueOf(await new CatalogService(new CatalogClient(double<StorefrontClient>(source)), favorites).searchProducts('tofu', limit, options));
+    return { ids: result.page.items.map(item => item.productId), cursor: result.page.nextCursor, reads: source.urls.length };
+  };
+  const notPets = await run({ excludeCategory: 'animais' });
+  assert.deepEqual(notPets.ids, ['3', '5']); assert.equal(notPets.reads, 2);
+  assert.deepEqual((await run({ category: 'supermercado/frescos' })).ids, ['3', '5']);
+  assert.deepEqual((await run({ category: 'LATICINIOS' })).ids, ['6']);
+  assert.deepEqual((await run({ brand: 'continente' }, 5)).ids, ['3', '6']);
+  assert.deepEqual((await run({ brand: 'nobody' }, 5)).ids, []);
+  // A filtered cursor continues after the last product returned.
+  const first = await run({ category: 'supermercado' }, 1);
+  assert.deepEqual(first.ids, ['3']);
+  const service = new CatalogService(new CatalogClient(double<StorefrontClient>(catalogue(specs, 2))), favorites);
+  const next = valueOf(await service.searchProducts('tofu', 5, { category: 'supermercado', cursor: present(first.cursor) }));
+  assert.deepEqual(next.page.items.map(item => item.productId), ['5', '6']);
+});
+test('unit_price sorts the returned products by drained kg, kg or litre and keeps the rest in order', async () => {
+  const specs = [{ id: '1', category: food, brand: 'A', price: '1,15€', label: '120 gr (peso escorrido 78 gr)' }, { id: '2', category: food, brand: 'B', price: '2,00€/kg' },
+    { id: '3', category: food, brand: 'C', price: '3,00€' }, { id: '4', category: food, brand: 'D', price: '0,90€/lt' }, { id: '5', category: food, brand: 'E', price: '1,50€/kg' }];
+  const favorites = double<FavoritesService>({ async loadCachedFavorites() { return null; } });
+  const service = new CatalogService(new CatalogClient(double<StorefrontClient>(catalogue(specs, 10))), favorites);
+  const sorted = valueOf(await service.searchProducts('tofu', 10, { sort: 'unit_price' }));
+  assert.deepEqual(sorted.page.items.map(item => item.productId), ['5', '2', '1', '4', '3']);
+  const relevance = valueOf(await service.searchProducts('tofu', 10, {}));
+  assert.deepEqual(relevance.page.items.map(item => item.productId), ['1', '2', '3', '4', '5']);
+});

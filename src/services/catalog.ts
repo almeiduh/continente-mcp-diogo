@@ -67,6 +67,37 @@ export interface SearchOptions {
   cursor?: string;
   /** Move products from the saved favorites to the top of the returned products. */
   favoritesFirst?: boolean;
+  /** Keep only products whose category path contains this text, such as `Congelados/Frutas e Legumes`. */
+  category?: string;
+  /** Leave out products whose category path contains this text, such as `Animais`. */
+  excludeCategory?: string;
+  /** Keep only products whose brand contains this text. */
+  brand?: string;
+  /** `unit_price` orders the returned products by price per drained kg, kg or litre. */
+  sort?: 'relevance' | 'unit_price';
+}
+/** Lower case without accents, so `Laticínios` matches `laticinios`. */
+const fold = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+/** Products a search keeps. An unknown category or brand never matches a filter that asks for one. */
+export function searchFilter(options: SearchOptions): (product: Product) => boolean {
+  const category = options.category ? fold(options.category) : null;
+  const excluded = options.excludeCategory ? fold(options.excludeCategory) : null;
+  const brand = options.brand ? fold(options.brand) : null;
+  return product => (!category || (product.category !== null && fold(product.category).includes(category)))
+    && (!excluded || product.category === null || !fold(product.category).includes(excluded))
+    && (!brand || (product.brand !== null && fold(product.brand).includes(brand)));
+}
+/** The price used to compare products: per drained kg when the label gives a drained weight, else per kg or litre. */
+export function comparablePrice(product: Product): { per: 'kg' | 'l'; minorUnits: number } | null {
+  if (product.drainedPrice) return { per: 'kg', minorUnits: product.drainedPrice.amount.minorUnits };
+  for (const price of [product.price, product.secondaryPrice]) if (price && (price.per === 'kg' || price.per === 'l')) return { per: price.per, minorUnits: price.amount.minorUnits };
+  return null;
+}
+/** Cheapest first, per kg before per litre; products without a comparable price keep their order at the end. */
+function byUnitPrice<T extends Product>(products: T[]): T[] {
+  const priced = products.map((product, index) => ({ product, index, price: comparablePrice(product) }));
+  return priced.sort((a, b) => !a.price || !b.price ? (a.price ? -1 : b.price ? 1 : a.index - b.index)
+    : a.price.per !== b.price.per ? (a.price.per === 'kg' ? -1 : 1) : a.price.minorUnits - b.price.minorUnits || a.index - b.index).map(entry => entry.product);
 }
 
 const SearchCursorSchema = z.strictObject({ v: z.literal(1), q: z.string(), start: z.number().int().nonnegative().max(100000), grid: z.string().nullable() });
@@ -134,7 +165,8 @@ export class CatalogService {
     const from = resume?.value.start ?? 0;
     const cache = await this.favorites.loadCachedFavorites();
     // Not wrapped in requestIO: the gateway handles cancellation per page so read pages survive.
-    const response = await this.client.searchProducts(query, limit, resume?.value);
+    const accept = searchFilter(options);
+    const response = await this.client.searchProducts(query, limit, resume?.value, accept);
     if (!response.ok) return response;
     const entries: { product: Product; position: number }[] = [];
     const failures = [...response.value.failures];
@@ -148,14 +180,17 @@ export class CatalogService {
       failures.push(...parsed.value.problems);
     }
     const seen = new Set<string>();
-    const fresh = entries.filter(({ product, position }) => position >= from && !seen.has(product.productId) && seen.add(product.productId));
+    const fresh = entries.filter(({ product, position }) => position >= from && accept(product) && !seen.has(product.productId) && seen.add(product.productId));
     const taken = fresh.slice(0, limit);
     const last = taken.at(-1);
     const more = fresh.length > limit || Boolean(response.value.nextCursor);
     const nextCursor = more && last ? encodeSearchCursor(query, { start: last.position + 1, grid: response.value.grid ?? null }) : null;
     const favorites = cache?.favorites ?? [];
     return success({ scanned: fresh.length, favorites, page: {
-      items: rankProductsByFavorites(taken.map(entry => entry.product), favorites, options.favoritesFirst ?? false), nextCursor,
+      items: (() => {
+        const ranked = rankProductsByFavorites(taken.map(entry => entry.product), favorites, options.favoritesFirst ?? false);
+        return options.sort === 'unit_price' ? byUnitPrice(ranked) : ranked;
+      })(), nextCursor,
       completeness: failures.length ? 'partial' : nextCursor ? 'unknown' : 'complete', failures,
     } });
   }

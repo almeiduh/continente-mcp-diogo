@@ -1,8 +1,9 @@
 import { load } from 'cheerio';
-import { FavoriteProductSchema, ProductSchema, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
+import { FavoriteProductSchema, ProductSchema, drainedPricePerKg, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
 import type { FavoriteProduct, PriceTag, Product, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parsePackageLabel } from './package.js';
+import { record } from './records.js';
 
 export const STOREFRONT_ORIGIN = 'https://www.continente.pt';
 export function storefrontUrl(value: string): string | null {
@@ -34,6 +35,15 @@ export function packageLabel(label: string): string | null {
 /** The amount in a "PVPR 6,00€" label, the recommended retail price shown beside a promotional price. */
 export function recommendedPriceLabel(label: string): string {
   return text(label).replace(/^PVPR\s*/i, '');
+}
+/** Brand and category path from the tile's analytics data, only when it names this product. */
+function tileFacts(raw: string | undefined, productId: string): { brand: string | null; category: string | null } {
+  let data: unknown = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { /* Optional data stays unknown. */ }
+  const facts = record(data);
+  if (!facts || String(facts.id ?? '') !== productId) return { brand: null, category: null };
+  const value = (input: unknown) => typeof input === 'string' && input.trim() && input !== 'undefined' ? text(input) : null;
+  return { brand: value(facts.brand), category: value(facts.category) };
 }
 /** An unrecognised price is reported, not fatal: the product stays usable with an unknown price. */
 function priceOrNull(label: string): { price: PriceTag | null; recognised: boolean } {
@@ -80,9 +90,11 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
     const badge = card.find(`.dual-badge-unavailable-${reference.value.productId}`);
     const addButton = card.find('button.js-add-to-cart').length > 0;
     const availability = badge.length !== 1 ? 'unknown' : badge.hasClass('d-none') ? (addButton ? 'available' : 'unknown') : addButton ? 'unknown' : 'unavailable';
+    const facts = tileFacts(card.closest('.product-tile').attr('data-product-tile-impression'), reference.value.productId);
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
       secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
-      recommendedPrice: recommended.price, availability }, 'product');
+      recommendedPrice: recommended.price, availability, ...facts,
+      drainedPrice: drainedPricePerKg(main.price, parsePackageLabel(packageLabel(quantity))) }, 'product');
     if (product.ok) entries.push({ product: product.value, position: start + index });
     else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });

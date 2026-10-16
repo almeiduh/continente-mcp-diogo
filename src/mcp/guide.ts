@@ -53,6 +53,7 @@ export const SERVER_INSTRUCTIONS = `Continente MCP shops at Continente.pt for on
 
 - Quantities are in the product's sale unit. Call get_product before choosing a quantity for weighted or bulk products, and respect its minimum, maximum and step.
 - Before applying a list, preview_basket shows what each change would do and cost, and what would be refused; it changes nothing.
+- Narrow searches with category, excludeCategory or brand when results stray ("tofu" also finds cat litter), and sort by unit_price to compare pack sizes.
 - For dietary needs (vegan, allergens, gluten, protein), read get_product_labels for the candidates. Report what the label declares; an allergen not mentioned is not a "free from" claim.
 - set_cart_item_quantity sets an exact total (adding the product if needed; 0 removes it). add_cart_item adds on top of what is already there. When the user says how many they need, use set_cart_item_quantity.
 - Change the cart one item at a time and read structuredContent.result before reporting success. confirmedQuantity is what the cart now holds.

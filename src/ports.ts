@@ -1,4 +1,4 @@
-import type { BrowserStatus, CartMutationResult, FavoritesCache, Result, ToolError } from './domain/index.js';
+import type { Product, BrowserStatus, CartMutationResult, FavoritesCache, Result, ToolError } from './domain/index.js';
 
 export type Logger = (message: string) => void;
 export interface Clock { now(): Date; }
@@ -17,7 +17,8 @@ export interface CatalogGateway {
   fetchProductDetails?(reference: string): Promise<Result<{ html: string; url: string }, ToolError>>;
   /** The label tab a product page links to (ingredients, allergens, nutrition). */
   fetchProductLabel?(url: string): Promise<Result<string, ToolError>>;
-  searchProducts(query: string, limit: number, resume?: SearchResume): Promise<Result<RetrievedPages, ToolError>>;
+  /** `accept` limits which products count towards `limit`, so filtered searches read enough pages. */
+  searchProducts(query: string, limit: number, resume?: SearchResume, accept?: (product: Product) => boolean): Promise<Result<RetrievedPages, ToolError>>;
 }
 export interface RetrievedPages {
   pages: string[]; failures: ToolError[]; nextCursor?: string | null; completeness?: 'complete' | 'partial' | 'unknown';

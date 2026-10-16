@@ -41,6 +41,11 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   ...packDetails,
   /** Whether the results page offers the product: `unknown` unless its badge and add button agree. */
   availability: z.enum(['available', 'unavailable', 'unknown']),
+  brand: z.string().nullable(),
+  /** The website's category path, such as `Supermercado/Congelados/Frutas e Legumes/Legumes`. */
+  category: z.string().nullable(),
+  /** Price per kg of drained weight, worked out from the price and the label's drained weight (`peso escorrido`). */
+  drainedPrice: PriceTagSchema.nullable(),
 });
 export type Product = z.infer<typeof ProductSchema>;
 
@@ -131,7 +136,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),

@@ -11,6 +11,10 @@ export const SearchInput = z.strictObject({
   limit: LimitInput.default(10).describe('Maximum products to return (default 10).'),
   cursor: z.string().min(1).max(4096).optional().describe('nextCursor from an earlier search for the same query, to continue right after its last product.'),
   favoritesFirst: z.boolean().default(false).describe('Move products from your saved favorites to the top of the returned products. Default: the website\'s relevance order.'),
+  category: z.string().min(1).max(100).optional().describe('Keep only products whose category path contains this text, such as "Congelados/Frutas e Legumes" or "Mercearia". Case and accents are ignored.'),
+  excludeCategory: z.string().min(1).max(100).optional().describe('Leave out products whose category path contains this text, such as "Animais".'),
+  brand: z.string().min(1).max(100).optional().describe('Keep only products whose brand contains this text, such as "Continente".'),
+  sort: z.enum(['relevance', 'unit_price']).default('relevance').describe('unit_price orders the returned products by price per drained kg, kg or litre, cheapest first.'),
 });
 const cartItemId = CartItemIdSchema.optional().describe('Cart line identifier from get_cart. Required to select one of several lines for the same product.');
 export const AddCartItemInput = z.strictObject({ productId: ProductReferenceInput,

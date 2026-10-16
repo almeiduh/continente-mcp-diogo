@@ -50,3 +50,14 @@ export function parsePriceTag(input: unknown): Result<PriceTag | null, ToolError
   if (!amount?.ok || !amount.value || !per) return { ok: false, error: { ...invalidData('price'), message: 'Unrecognised price format' } };
   return { ok: true, value: { amount: amount.value, per } };
 }
+
+/**
+ * Price per kg of drained weight, for a single pack with a stated drained weight. Null when the
+ * pack price is not for one item or the drained weight is not in grams or kilograms.
+ */
+export function drainedPricePerKg(price: { amount: Money; per: string } | null, pack: { count: number | null; drained: { value: number; unit: string } | null } | null) {
+  if (!price || price.per !== 'item' || !pack?.drained || pack.count !== 1) return null;
+  const kilograms = pack.drained.unit === 'g' ? pack.drained.value / 1000 : pack.drained.unit === 'kg' ? pack.drained.value : null;
+  if (!kilograms || kilograms <= 0) return null;
+  return { amount: { currency: 'EUR' as const, minorUnits: Math.round(price.amount.minorUnits / kilograms) }, per: 'kg' as const };
+}
