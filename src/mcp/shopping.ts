@@ -395,7 +395,7 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
-    tool('choose_products', 'Let the user choose products',
+    tool('choose_products', 'Choose products',
       'Show the user the open choices of a request side by side, with photos where the client supports it, so they pick one product for each. ' +
       'Use it only when the user must decide between candidates, such as two milks or 500 g against 1 kg; settle everything else yourself (favorites, ' +
       'usual purchases, cheapest per kg). Put all open choices of a list in one call, at most 10, each with 2 to 4 candidates and your suggestion. ' +
