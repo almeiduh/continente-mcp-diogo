@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `clear_cart` empties the whole cart in one step with the website's own "remove all" action, instead of removing lines one by one, and confirms that no product lines remain. It needs `confirm: true`, does not write to an empty cart, and reports an unknown outcome, never retried, when the result cannot be confirmed.
+
 ## [0.7.1] - 2026-10-16
 
 ### Changed

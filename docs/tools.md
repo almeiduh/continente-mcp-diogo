@@ -1,6 +1,6 @@
 # Tool reference
 
-Continente MCP exposes 13 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 14 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
@@ -15,6 +15,7 @@ behaviour annotations.
 | `add_cart_item` | Yes | Yes | `productId`, `quantity` (> 0, default 1), `cartItemId?` |
 | `set_cart_item_quantity` | Yes | Yes | `productId`, `quantity` (≥ 0), `cartItemId?` |
 | `remove_cart_item` | Yes | Yes | `productId`, `cartItemId?` |
+| `clear_cart` | Yes | Yes | `confirm` (must be `true`) |
 | `list_orders` | Yes | No | `limit` (1–50, default 5), `includeLines` (default `true`), `detailLimit?` (0–50), `cursor?` |
 | `get_order` | Yes | No | `orderId` |
 | `list_frequently_bought_products` | Yes | No | `orderLimit` (1–50, default 10), `limit` (1–50, default 25) |
@@ -285,6 +286,7 @@ cartons of milk instead of one pack of six.
 | `add_cart_item` | Adds `quantity` to whatever is already in the cart. Not idempotent. |
 | `set_cart_item_quantity` | Makes the cart hold exactly `quantity`, adding the product if it is absent. Zero removes it. Repeating the same call makes no further change. |
 | `remove_cart_item` | Removes the line. If it is already absent, succeeds without a write (`disposition: "already_absent"`). |
+| `clear_cart` | Empties the cart with the website's own "remove all" action, then confirms that no product lines remain. Needs `confirm: true`. An empty cart is not written to (`disposition: "already_empty"`); otherwise `removedLines` says how many product lines it held. |
 
 Quantities are validated against the product's sale rules (minimum, maximum, step and
 three-decimal storefront precision) before anything is sent. An invalid amount fails with

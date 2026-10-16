@@ -252,6 +252,14 @@ export class ShoppingHandlers {
   async setCartItemQuantity(reference: string, quantity: number, cartItemId?: string): Promise<CallToolResult> {
     return this.mutation(await this.recover(() => this.services.cart.setCartItemQuantity(reference, quantity, cartItemId)), quantity === 0 ? 'remove' : 'set');
   }
+  async clearCart(): Promise<CallToolResult> {
+    const result = await this.recover(() => this.services.cart.clearCart());
+    if (!result.ok) return this.failed(result.error, { outcome: 'not_applied' });
+    const value = result.value;
+    if (value.outcome === 'unknown') return this.failed(value.error, { outcome: 'unknown', recovery: value.recovery });
+    return response(value, value.disposition === 'already_empty' ? 'The cart was already empty; nothing changed.'
+      : `Emptied the cart: removed ${value.removedLines} product line${value.removedLines === 1 ? '' : 's'}. The cart now holds no products.`);
+  }
   async removeCartItem(reference: string, cartItemId?: string): Promise<CallToolResult> {
     return this.mutation(await this.recover(() => this.services.cart.removeCartItem(reference, cartItemId)), 'remove');
   }
@@ -381,6 +389,10 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       `Pass cartItemId from get_cart when the product has more than one line. ${UNCERTAIN_WRITE}`,
       contracts.RemoveCartItemInput, contracts.MutationOutput, UPDATE,
       args => handlers.removeCartItem(args.productId, args.cartItemId), true),
+    tool('clear_cart', 'Empty cart',
+      'Remove every product from the cart in one step, with the website\'s own "remove all" action, and confirm the cart is empty. ' +
+      'Only when the user asks to empty or clear the whole cart; pass confirm: true. To remove some products, use remove_cart_item. ' + UNCERTAIN_WRITE,
+      contracts.ClearCartInput, contracts.ClearCartOutput, UPDATE, () => handlers.clearCart(), true),
     tool('list_orders', 'List orders',
       'List recent orders, newest first, with their product lines. Each order has an orderId for get_order. ' +
       'Use detailLimit or includeLines: false to read fewer details, and pass the returned nextCursor as cursor to continue.',

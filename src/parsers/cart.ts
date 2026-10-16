@@ -297,6 +297,13 @@ export function weightedLineQuantity(html: string, productId: ProductId, cartIte
   return storefront.success && Number.isFinite(pieces) && Math.abs(pieces - Math.round(pieces)) < 1e-6
     ? { pieces: { value: Math.round(pieces), unit: 'un' }, storefront: { value: amount, unit: storefront.data } } : null;
 }
+/** The clear-all request behind the cart page's "remove all" confirmation button. */
+export function parseClearCartAction(html: string): Result<string, ToolError> {
+  const $ = load(html);
+  const urls = [...new Set($('.confirm-confirm-clean-cart-select[data-clean-cart-url]').map((_, node) => $(node).attr('data-clean-cart-url') ?? '').get())];
+  const valid = urls.map(url => storefrontUrl(url)).filter((url): url is string => url !== null && new URL(url).pathname.endsWith('/Cart-RemoveAllProductLineItems'));
+  return valid.length === 1 ? success(valid[0]!) : failure('invalid_data', 'The cart page has no recognised clear-all control');
+}
 export function parseMutationReceipt(input: unknown): Result<void, ToolError> {
   if (!record(input) || field(input, 'error') || field(input, 'success') === false ||
     field(input, 'resources', 'customerAuthenticated') === false) return failure('cart_change_rejected');

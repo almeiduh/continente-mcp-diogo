@@ -20,6 +20,15 @@ export const CartMutationResultSchema = z.discriminatedUnion('outcome', [
 ]).refine(result => result.outcome !== 'confirmed' || result.confirmedQuantity.unit === result.requested.unit,
 { message: 'Confirmed and requested quantities must use the same sale unit' });
 export type CartMutationResult = z.infer<typeof CartMutationResultSchema>;
+/** Emptying the cart: confirmed by reading it back, or unknown when it could not be confirmed. */
+export const ClearCartResultSchema = z.discriminatedUnion('outcome', [
+  z.strictObject({ outcome: z.literal('confirmed'), disposition: z.enum(['cleared', 'already_empty']),
+    /** Product lines the cart held before; bags are not counted. */
+    removedLines: z.number().int().nonnegative() }),
+  z.strictObject({ outcome: z.literal('unknown'), error: ToolErrorSchema.extend({ retryable: z.literal(false) }),
+    recovery: z.strictObject({ action: z.literal('get_cart'), automaticReplay: z.literal(false) }) }),
+]);
+export type ClearCartResult = z.infer<typeof ClearCartResultSchema>;
 
 /** Completeness is about the requested source scope, not the entire shop or account history. */
 export function pageResultSchema<T extends z.ZodType>(item: T) {

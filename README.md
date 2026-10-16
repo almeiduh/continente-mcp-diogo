@@ -125,6 +125,7 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `add_cart_item` | Add an amount on top of what is in the cart |
 | `set_cart_item_quantity` | Make the cart hold exactly a quantity; zero removes |
 | `remove_cart_item` | Remove a line from the cart |
+| `clear_cart` | Empty the whole cart in one confirmed step |
 | `list_orders` | Recent orders with their product lines |
 | `get_order` | One order's product lines |
 | `list_frequently_bought_products` | Products ranked by how often you order them |

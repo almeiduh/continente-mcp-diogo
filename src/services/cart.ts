@@ -1,10 +1,10 @@
 import { checkRequest, markWriteAttempted, requestIO, RequestStopped } from '../session/request.js';
 import type { CartGateway, MutationResult } from '../ports.js';
-import type { Cart, CartMutationResult, ProductId, Quantity, Result, ToolError } from '../domain/index.js';
+import type { Cart, CartMutationResult, ClearCartResult, ProductId, Quantity, Result, ToolError } from '../domain/index.js';
 import { parseProductReference, CartItemIdSchema } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parseCartResponse, parseProductForm, parseCartControls, parseSaleRules, validateSaleQuantity, weightedLineQuantity,
-  toStorefrontQuantity, observedCartQuantity, selectCartItem, parseMutationReceipt } from '../parsers/cart.js';
+  toStorefrontQuantity, observedCartQuantity, selectCartItem, parseMutationReceipt, parseClearCartAction } from '../parsers/cart.js';
 import { storefrontUrl } from '../parsers/catalog.js';
 import { field } from '../parsers/records.js';
 
@@ -81,6 +81,43 @@ export class CartService {
   /** Set an existing line only; used after a write, where adding again could duplicate it. */
   private updateExistingQuantity(reference: string, value: number, cartItemId?: string): Promise<MutationResult> {
     return this.preflight(() => this.setQuantity(reference, value, cartItemId, false));
+  }
+  /**
+   * Empty the cart with the website's own "remove all" request, then read the cart back: no product
+   * lines may remain. An already empty cart is not written to. After the request is sent, any
+   * failure is an unknown outcome that is never retried.
+   */
+  async clearCart(): Promise<Result<ClearCartResult, ToolError>> {
+    return this.preflightClear(async () => {
+      const before = await this.getCart();
+      if (!before.ok) return before;
+      const lines = before.value.items.filter(item => item.kind === 'product').length;
+      if (!lines) return success({ outcome: 'confirmed', disposition: 'already_empty', removedLines: 0 });
+      const html = await requestIO(() => this.client.fetchCartControls());
+      if (!html.ok) return html;
+      const action = parseClearCartAction(html.value);
+      if (!action.ok) return action;
+      const unknown = (error: ToolError): Result<ClearCartResult, ToolError> => success({ outcome: 'unknown', error: { ...error, retryable: false },
+        recovery: { action: 'get_cart', automaticReplay: false } });
+      checkRequest();
+      markWriteAttempted();
+      try {
+        const sent = await requestIO(() => this.client.submitCartMutation(action.value, new URLSearchParams(), 'POST'));
+        if (!sent.ok) return unknown(sent.error);
+        const receipt = parseMutationReceipt(sent.value);
+        if (!receipt.ok) return unknown(receipt.error);
+        const after = await this.getCart();
+        if (!after.ok) return unknown(after.error);
+        if (after.value.items.some(item => item.kind === 'product')) return unknown(failure('cart_change_unconfirmed', 'Product lines remain in the cart').error);
+        return success({ outcome: 'confirmed', disposition: 'cleared', removedLines: lines });
+      } catch (error) {
+        return unknown(failure(error instanceof RequestStopped ? error.code : 'cart_change_unconfirmed').error);
+      }
+    });
+  }
+  private async preflightClear(operation: () => Promise<Result<ClearCartResult, ToolError>>): Promise<Result<ClearCartResult, ToolError>> {
+    try { return await operation(); }
+    catch (error) { return failure(error instanceof RequestStopped ? error.code : 'upstream_unavailable'); }
   }
   async removeCartItem(reference: string, cartItemId?: string): Promise<MutationResult> {
     return this.preflight(() => this.setQuantity(reference, 0, cartItemId, false));

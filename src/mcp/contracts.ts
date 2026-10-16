@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ProductLabelSchema, ProductIdSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
+import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ClearCartResultSchema, ProductLabelSchema, ProductIdSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
   ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
@@ -22,6 +22,9 @@ export const AddCartItemInput = z.strictObject({ productId: ProductReferenceInpu
 export const SetCartItemQuantityInput = z.strictObject({ productId: ProductReferenceInput,
   quantity: z.number().nonnegative().describe('Desired total in the product sale unit. Zero removes the item.'), cartItemId });
 export const RemoveCartItemInput = z.strictObject({ productId: ProductReferenceInput, cartItemId });
+export const ClearCartInput = z.strictObject({
+  confirm: z.literal(true).describe('Must be true: the user asked to empty the whole cart.'),
+});
 export const PreviewBasketInput = z.strictObject({
   items: z.array(z.strictObject({ productId: ProductReferenceInput,
     quantity: z.number().nonnegative().describe('Desired total in the product sale unit, as for set_cart_item_quantity. Zero means remove.'), cartItemId }))
@@ -99,6 +102,7 @@ export const PreviewOutput = outputSchema(PreviewData);
 export const CartOutput = outputSchema(CartData);
 const ConfirmedMutationData = CartMutationResultSchema.options[0].refine(value => value.requested.unit === value.confirmedQuantity.unit);
 export const MutationOutput = outputSchema(ConfirmedMutationData);
+export const ClearCartOutput = outputSchema(ClearCartResultSchema.options[0]);
 export const OrdersOutput = outputSchema(OrdersData);
 export const SingleOrderOutput = outputSchema(z.strictObject({ order: OrderSchema, unknownQuantityLines: integer }));
 export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData.optional() });
