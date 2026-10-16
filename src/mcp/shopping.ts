@@ -3,7 +3,7 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
 import type { ResourceHandler, ToolHandler } from './server.js';
 import { PICKER_HTML, PICKER_META, PICKER_MIME_TYPE, PICKER_URI } from './picker.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
-import type { BasketPreview, PriceTag, ProductId, ProductLabel, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
+import type { BasketPreview, PriceTag, ProductId, ProductLabel, Promotion, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure, parseProductReference } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
@@ -53,6 +53,18 @@ const observed = (quantity: ObservedQuantity) => quantity.status === 'known' ? a
   : quantity.value === null ? 'quantity unknown' : `${quantity.value} (unit unknown)`;
 const PER: Record<PriceTag['per'], string> = { item: '', piece: ' per piece', kg: '/kg', l: '/l' };
 const priced = (price: PriceTag | null) => price === null ? 'price unknown' : `${euros(price.amount)}${PER[price.per]}`;
+const ordinal = (n: number) => `${n}${n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
+/** "; offer: Leve 3 Por 1€ (3 for €1.00, applied in the cart) until 2026-10-18". `withRecommended` adds the PVPR where the price line lacks it. */
+function offers(promotions: readonly Promotion[], withRecommended = false): string {
+  const shown = promotions.filter(promotion => withRecommended || promotion.kind !== 'recommended_price').map(promotion => {
+    const detail = promotion.kind === 'recommended_price' && promotion.previousPrice ? `PVPR ${priced(promotion.previousPrice)}`
+      : promotion.kind === 'immediate_discount' && promotion.previousPrice ? `was ${priced(promotion.previousPrice)}`
+        : promotion.kind === 'multi_buy' && promotion.bundle ? `${promotion.bundle.quantity} for ${euros(promotion.bundle.total)}, applied in the cart`
+          : promotion.kind === 'nth_unit_discount' && promotion.nthUnit && promotion.percentOff ? `${promotion.percentOff}% off the ${ordinal(promotion.nthUnit)} unit, applied in the cart` : '';
+    return `${promotion.label}${detail ? ` (${detail})` : ''}${promotion.validTo ? ` until ${promotion.validTo}` : ''}`;
+  });
+  return shown.length ? `; offer: ${shown.join('; ')}` : '';
+}
 const numbered = (lines: string[]) => lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
 
 function response(data: unknown, text: string, status: Status = 'success'): CallToolResult {
@@ -69,7 +81,7 @@ function errorResult(error: ToolError, mutation?: MutationSummary, signIn?: Sign
 
 export function formatProductSearchResults(products: SearchResult['page']['items']): string {
   return numbered(products.map(product => `${product.name}${product.favorite ? ' ⭐ favorite' : ''}${product.availability === 'unavailable' ? ' (unavailable)' : ''} — ${priced(product.price)}` +
-    `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}` +
+    `${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}${offers(product.promotions)}` +
     `${product.packageText ? `, pack ${product.packageText}` : ''}${product.drainedPrice ? ` (${priced(product.drainedPrice)} drained)` : ''}` +
     `${product.unitPrice?.basis === 'pack' ? ` (${euros(product.unitPrice.amount)}/${product.unitPrice.per} from the pack size)` : ''}` +
     `${product.minimumText ? `, minimum ${product.minimumText}` : ''}` +
@@ -91,6 +103,7 @@ function formatProduct(product: ProductDetails): string {
   return [`${product.name}`, `productId: ${product.productId}`,
     `Price: ${priced(product.price)}${product.secondaryPrice ? ` (${priced(product.secondaryPrice)})` : ''}` +
       `${product.recommendedPrice ? `, PVPR ${priced(product.recommendedPrice)}` : ''}`,
+    ...(product.promotions.length ? [`Promotions: ${product.promotions.map(promotion => offers([promotion], true).replace(/^; offer: /, '')).join('; ')}`] : []),
     ...(product.packageText ? [`Pack: ${product.packageText}${summary ? ` (${summary})` : ''}`] : []),
     ...(product.minimumText ? [`Minimum purchase: ${product.minimumText}`] : []),
     `Availability: ${product.availability}`,
@@ -271,6 +284,7 @@ export class ShoppingHandlers {
     const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)}` +
       `${item.storefrontQuantity ? ` (about ${amount(item.storefrontQuantity)})` : ''} × ${priced(item.price)}` +
       `${item.lineTotal ? `, line ${item.estimated ? 'about ' : ''}${euros(item.lineTotal)}` : ''}` +
+      `${item.lineTotalBeforeDiscount ? ` (${euros(item.lineTotalBeforeDiscount)} before the discount)` : ''}${offers(item.promotions, true)}` +
       `\n   productId: ${item.productId}${item.cartItemId ? `, cartItemId: ${item.cartItemId}` : ''}`));
     const { totals } = cart;
     const optional = ([['Deposit', totals.deposit], ['Delivery', totals.delivery], ['Discounts', totals.discounts]] as const)
@@ -385,13 +399,14 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
   return [
     tool('search_products', 'Search products',
       'Search the Continente.pt catalogue. No login needed. Results keep the website\'s relevance order and mark saved favorites; pass favoritesFirst to move them to the top. ' +
-      'Each shows its price with what it is for (per item, piece, kg or litre), the pack size, brand, category and productId. Filter with category, excludeCategory or brand, ' +
+      'Each shows its price with what it is for (per item, piece, kg or litre), any promotions, the pack size, brand, category and productId. Filter with category, excludeCategory or brand, ' +
       'and sort by unit_price to compare packs. Pass nextCursor back as cursor, with the same query, for the next products.',
       contracts.SearchInput, contracts.SearchOutput, READ, args => handlers.searchProducts(args.query, args.limit, { ...(args.cursor ? { cursor: args.cursor } : {}), favoritesFirst: args.favoritesFirst,
         ...(args.category ? { category: args.category } : {}), ...(args.excludeCategory ? { excludeCategory: args.excludeCategory } : {}),
         ...(args.brand ? { brand: args.brand } : {}), sort: args.sort })),
     tool('get_product', 'Get product',
-      'Get one product by productId: price, pack size, availability and sale rules (sale unit, minimum, maximum and step). ' +
+      'Get one product by productId: price, promotions with their dates, pack size, availability and sale rules (sale unit, minimum, maximum and step). ' +
+      'A multi-buy or nth-unit offer is applied by the cart, not in the price shown. ' +
       'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
@@ -414,7 +429,7 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       contracts.FavoritesInput, contracts.FavoritesOutput, READ, args => handlers.listFavorites(args.refresh)),
     tool('get_cart', 'Get cart',
       'Read the shopping cart: each line with productId, cartItemId, kind (product or bag), quantity, unit price (per item or per kg) ' +
-      'and lineTotal, plus the totals ' +
+      'and lineTotal, its promotions and lineTotalBeforeDiscount when the cart discounts the line, plus the totals ' +
       '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),

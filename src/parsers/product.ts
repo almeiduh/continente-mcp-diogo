@@ -3,7 +3,7 @@ import { ProductDetailsSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, pa
 import type { ProductDetails, ProductId, Result, ToolError } from '../domain/index.js';
 import { success, failure } from '../domain/index.js';
 import { parseSaleRules } from './cart.js';
-import { minimumLabel, packageLabel, productImageUrl, productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
+import { minimumLabel, pagePromotions, packageLabel, productImageUrl, productReferenceFromUrl, recommendedPriceLabel, storefrontUrl } from './catalog.js';
 import { parsePackageLabel } from './package.js';
 import { record } from './records.js';
 
@@ -49,6 +49,11 @@ export function parseProductDetails(html: string, sourceUrl: string, expectedId:
     price: priceTag('.pwc-tile--price-primary'),
     secondaryPrice: priceTag('.pwc-tile--price-secondary'),
     recommendedPrice: recommended.ok ? recommended.value : null,
+    // The product's own badge sits beside its name; recommendation tiles carry their own.
+    promotions: pagePromotions({ badge: $('.product-name-details--wrapper .ct-product-tile-badge--promotional img').filter((_, node) => $(node).closest('.product-tile').length === 0).first().attr('alt') ?? '',
+      message: $(`.dual-badge-${expectedId}.dual-badge-message .dual-badge-message-text`).filter((_, node) => $(node).closest('.product-tile').length === 0).first().text(),
+      struck: $('.ct-pdp--prices .list .strike-through').first().text(), recommended: recommended.ok ? recommended.value : null,
+      price: priceTag('.pwc-tile--price-primary'), validity: $('.ct-pdp--promo-time-text').first().text() }),
     imageUrl,
     availability: buyable !== null ? (buyable ? 'available' : 'unavailable') : listed === 'https://schema.org/InStock' ? 'available'
       : ['https://schema.org/OutOfStock', 'https://schema.org/Discontinued'].includes(listed) ? 'unavailable' : 'unknown',

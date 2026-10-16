@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 import { z } from 'zod';
-import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, failure, parseMoneyAmount, parseProductReference, parseValue, success } from '../domain/index.js';
-import type { Cart, CartItem, CartTotals, Money, PriceTag, ProductId, ProductSaleRules, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
+import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, failure, lisbonDate, parseMoneyAmount, parseProductReference, parsePromotionLabel, parseValue, success } from '../domain/index.js';
+import type { Cart, CartItem, CartTotals, Money, PriceTag, ProductId, ProductSaleRules, Promotion, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
 import { field, record } from './records.js';
 import { storefrontUrl } from './catalog.js';
 
@@ -56,6 +56,31 @@ function lineUnits(line: unknown): LineUnits | undefined {
     countsPieces: rate !== null, rate, storefrontUnit: storefront.success ? storefront.data : null };
 }
 
+/**
+ * A line's promotions: the badge (`badgeInfo.promo`, a recommended price or an immediate discount,
+ * with the previous price in `price.list`) and the offers in `promotions`, such as a multi-buy. The
+ * badge's dates belong to the badge, or to the line's single offer when the badge has no message.
+ */
+function cartPromotions(line: unknown, price: PriceTag | null): Promotion[] {
+  const badge = record(field(line, 'badgeInfo', 'promo'));
+  const dates = badge ? { validFrom: lisbonDate(badge.onlineFromDate), validTo: lisbonDate(badge.onlineToDate) } : null;
+  const found: Promotion[] = [];
+  const shown = typeof badge?.msg === 'string' ? parsePromotionLabel(badge.msg) : null;
+  if (shown) {
+    const list = parseMoneyAmount(field(line, 'price', 'list', 'value'));
+    if ((shown.kind === 'recommended_price' || shown.kind === 'immediate_discount') && list.ok && list.value && price) shown.previousPrice = { amount: list.value, per: price.per };
+    found.push(dates ? { ...shown, ...dates } : shown);
+  }
+  const listed = field(line, 'promotions');
+  const offers = (Array.isArray(listed) ? listed : []).filter(offer => field(offer, 'enabled') !== false).map(offer => {
+    const message = field(offer, 'dualBadgeMessage'); const callout = field(offer, 'calloutMsg');
+    const label = typeof message === 'string' && message.trim() ? message : typeof callout === 'string' ? callout.replace(/<[^>]+>/g, ' ').split('. ')[0] ?? '' : '';
+    return parsePromotionLabel(label);
+  }).filter((offer): offer is Promotion => offer !== null);
+  if (!shown && offers.length === 1 && dates) Object.assign(offers[0]!, dates);
+  return [...found, ...offers];
+}
+
 function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolError> {
   const reference = parseProductReference(field(line, 'id'));
   const reported = field(line, 'secondaryQuantity') ?? field(line, 'quantity');
@@ -64,6 +89,8 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
   const lineTotal = parseMoneyAmount(field(line, 'priceTotal', 'value'));
   if (!reference.ok || typeof rawQuantity !== 'number' || !Number.isFinite(rawQuantity) || rawQuantity < 0 || !unitPrice.ok || !lineTotal.ok) return unrecognizedCart();
   const units = lineUnits(line);
+  const price = unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null;
+  const beforeDiscount = parseMoneyAmount(field(line, 'priceTotal', 'nonAdjustedPriceValue'));
   return parseValue(CartSchema.shape.items.element, {
     productId: reference.value.productId,
     cartItemId: field(line, 'UUID') ?? field(line, 'uuid') ?? null,
@@ -74,9 +101,11 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
         : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
     storefrontQuantity: units?.weighted && units.countsPieces && units.rate !== null && units.storefrontUnit
       ? { value: Number((rawQuantity * units.rate).toPrecision(12)), unit: units.storefrontUnit } : null,
-    price: unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null,
+    price,
     lineTotal: lineTotal.value,
     estimated: units?.weighted ?? false,
+    promotions: cartPromotions(line, price),
+    lineTotalBeforeDiscount: beforeDiscount.ok && beforeDiscount.value && lineTotal.value && beforeDiscount.value.minorUnits > lineTotal.value.minorUnits ? beforeDiscount.value : null,
   }, 'cart line');
 }
 

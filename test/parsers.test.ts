@@ -16,7 +16,7 @@ test('catalogue tiles keep each price with what it is for, the pack size and the
     secondaryPrice: { amount: eur(129), per: 'l' }, packageText: '1 lt', minimumText: null, recommendedPrice: { amount: eur(149), per: 'item' },
     package: { count: 1, each: { value: 1, unit: 'l' }, net: { value: 1, unit: 'l' }, drained: null, approximate: false }, availability: 'available',
     brand: 'Mimosa', category: 'Supermercado/Laticínios e Ovos/Leite/Leite Meio Gordo', drainedPrice: null,
-    unitPrice: { amount: eur(129), per: 'l', basis: 'website' }, imageUrl: null });
+    unitPrice: { amount: eur(129), per: 'l', basis: 'website' }, imageUrl: null, promotions: [] });
   const banana = present(page.products[1]);
   assert.deepEqual([banana.price, banana.secondaryPrice], [{ amount: eur(119), per: 'kg' }, { amount: eur(24), per: 'piece' }]);
   assert.equal(banana.minimumText, '600 gr (3 un)'); assert.equal(banana.packageText, null); assert.equal(banana.package, null);

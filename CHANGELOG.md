@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Promotions ([#6](https://github.com/andredelgado/continente-mcp/issues/6)). Search results, `get_product` and cart lines have `promotions`, each with the website's label and a `kind`: `recommended_price` (PVPR), `immediate_discount` (with `percentOff` or `amountOff` and the struck-through `previousPrice`), `multi_buy` (`Leve 3 Por 1€` as a `bundle` of 3 for €1.00), `nth_unit_discount` (`20% na 2ª un`), or `other` for a label not recognised. Product pages and the cart give `validFrom` and `validTo`. Cart lines also have `lineTotalBeforeDiscount` when the cart discounts the line, as for a multi-buy. The text output shows each offer beside the price. Built from 1,384 real tiles and a live cart check; card-only offers did not appear signed in or out.
+
 ### Changed
 
 - The order tools read a settled order's details only once while the server runs. An order dated 14 or more days ago no longer changes, so its product lines are kept in memory for the signed-in account and reused by `list_frequently_bought_products`, `list_orders` and `get_order`; a different sign-in clears them. Recent orders and the order list are always read from the website. For a weekly shopper, a repeated frequently-bought scan of 10 orders loads about 3 pages instead of 11.

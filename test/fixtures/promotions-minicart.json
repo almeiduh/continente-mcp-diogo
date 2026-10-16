@@ -1,0 +1,277 @@
+{
+ "action": "Cart-MiniCartShow",
+ "resources": {
+  "customerAuthenticated": true
+ },
+ "basket": {
+  "resources": {
+   "plasticBagID": "9999999"
+  },
+  "itemsSortedByBrand": [
+   {
+    "items": [
+     {
+      "id": "7477288",
+      "UUID": "line-yogurt",
+      "productName": "Iogurte Grego Natural Mimosa",
+      "secondaryQuantity": 2,
+      "measurementInfo": {
+       "quantityConversionRates": {
+        "primaryunit": "un",
+        "secondaryunit": "kg",
+        "selectedunit": "primary",
+        "unitConversionRate": 0,
+        "minOrderQuantity": 1,
+        "stepQuantity": 1,
+        "maxNumberOfUnitsPerSale": 60,
+        "hasAlternativeSaleUnit": false,
+        "hasConversionRate": false
+       }
+      },
+      "price": {
+       "sales": {
+        "value": 1.89
+       },
+       "list": {
+        "value": 2.71
+       }
+      },
+      "priceTotal": {
+       "value": 3.78,
+       "basePriceValue": 3.78,
+       "nonAdjustedPriceValue": 3.78,
+       "promoUnitPrice": 1.89
+      },
+      "badgeInfo": {
+       "promo": {
+        "img": "",
+        "title": "PVP Recomendado: 2,71€/un",
+        "alt": "PVP Recomendado: 2,71€/un",
+        "fallbackImage": "",
+        "msg": "PVP Recomendado: 2,71€/un",
+        "msgUnit": "/un",
+        "type": "pvpr",
+        "superpriceConstant": "superprice",
+        "discount": "",
+        "discountUnit": "%",
+        "unit": "%",
+        "unitType": "percent",
+        "showDiscountMessage": false,
+        "showPlusDESignOnBadge": false,
+        "showDiscountValue": true,
+        "plusLabel": "+",
+        "promoTime": "Promoção válida de 07/10/2026 a 19/10/2026",
+        "promo10percent": false,
+        "onlineFromDate": "2026-10-06T23:00:00Z",
+        "onlineToDate": "2026-10-19T22:59:59Z",
+        "masterMsgDisplayValue": "",
+        "masterUnitValue": "%",
+        "masterDiscountValue": "",
+        "productBrand": "col",
+        "priceValue": ""
+       },
+       "general": null,
+       "advertised": null,
+       "pictograms": []
+      },
+      "promotions": null
+     },
+     {
+      "id": "7082533",
+      "UUID": "line-oil",
+      "productName": "Azeite Continente",
+      "secondaryQuantity": 1,
+      "measurementInfo": {
+       "quantityConversionRates": {
+        "primaryunit": "un",
+        "secondaryunit": "kg",
+        "selectedunit": "primary",
+        "unitConversionRate": 0,
+        "minOrderQuantity": 1,
+        "stepQuantity": 1,
+        "maxNumberOfUnitsPerSale": 60,
+        "hasAlternativeSaleUnit": false,
+        "hasConversionRate": false
+       }
+      },
+      "price": {
+       "sales": {
+        "value": 3.29
+       },
+       "list": {
+        "value": 3.79
+       }
+      },
+      "priceTotal": {
+       "value": 3.29,
+       "basePriceValue": 3.29,
+       "nonAdjustedPriceValue": 3.29,
+       "promoUnitPrice": 3.29
+      },
+      "badgeInfo": {
+       "promo": {
+        "img": "",
+        "title": "Desconto Imediato: 13%",
+        "alt": "Desconto Imediato: 13%",
+        "fallbackImage": "",
+        "msg": "Desconto Imediato: 13%",
+        "msgUnit": "/un",
+        "type": "superprice",
+        "superpriceConstant": "superprice",
+        "discount": "",
+        "discountUnit": "%",
+        "unit": "%",
+        "unitType": "percent",
+        "showDiscountMessage": false,
+        "showPlusDESignOnBadge": false,
+        "showDiscountValue": true,
+        "plusLabel": "+",
+        "promoTime": "Promoção válida de 13/10/2026 a 26/10/2026",
+        "promo10percent": false,
+        "onlineFromDate": "2026-10-12T23:00:00Z",
+        "onlineToDate": "2026-10-26T23:59:59Z",
+        "masterMsgDisplayValue": "",
+        "masterUnitValue": "%",
+        "masterDiscountValue": "",
+        "productBrand": "col",
+        "priceValue": ""
+       },
+       "general": null,
+       "advertised": null,
+       "pictograms": []
+      },
+      "promotions": null
+     },
+     {
+      "id": "8607640",
+      "UUID": "line-cat",
+      "productName": "Comida Húmida para Gato Adulto Paté com Bacalhau Continente Pet",
+      "secondaryQuantity": 3,
+      "measurementInfo": {
+       "quantityConversionRates": {
+        "primaryunit": "un",
+        "secondaryunit": "kg",
+        "selectedunit": "primary",
+        "unitConversionRate": 0,
+        "minOrderQuantity": 1,
+        "stepQuantity": 1,
+        "maxNumberOfUnitsPerSale": 60,
+        "hasAlternativeSaleUnit": false,
+        "hasConversionRate": false
+       }
+      },
+      "price": {
+       "sales": {
+        "value": 0.39
+       },
+       "list": null
+      },
+      "priceTotal": {
+       "value": 1.0,
+       "basePriceValue": 1.0,
+       "nonAdjustedPriceValue": 1.17,
+       "promoUnitPrice": 0.39
+      },
+      "badgeInfo": {
+       "promo": {
+        "img": "",
+        "title": "",
+        "alt": "",
+        "fallbackImage": "",
+        "msg": "",
+        "msgUnit": "/un",
+        "type": "",
+        "superpriceConstant": "superprice",
+        "discount": "",
+        "discountUnit": "%",
+        "unit": "%",
+        "unitType": "percent",
+        "showDiscountMessage": false,
+        "showPlusDESignOnBadge": false,
+        "showDiscountValue": true,
+        "plusLabel": "+",
+        "promoTime": "Promoção válida de 29/09/2026 a 18/10/2026",
+        "promo10percent": false,
+        "onlineFromDate": "2026-09-28T23:00:00Z",
+        "onlineToDate": "2026-10-18T22:59:59Z",
+        "masterMsgDisplayValue": "",
+        "masterUnitValue": "%",
+        "masterDiscountValue": "",
+        "productBrand": "col",
+        "priceValue": ""
+       },
+       "general": null,
+       "advertised": null,
+       "pictograms": []
+      },
+      "promotions": [
+       {
+        "calloutMsg": "Leve 3 unidades por 1€. Para usufruir da campanha adicione 3 unidades ao carrinho.",
+        "details": "",
+        "enabled": true,
+        "id": "AR_1_FeiraPet_L3P1e",
+        "name": "AR_1_FeiraPet_L3P1e",
+        "promotionClass": "PRODUCT",
+        "rank": 1,
+        "dualBadgeMessage": "Leve 3 Por 1€"
+       }
+      ]
+     },
+     {
+      "id": "8912985",
+      "UUID": "line-milk",
+      "productName": "Leite Meio Gordo",
+      "secondaryQuantity": 3,
+      "measurementInfo": {
+       "quantityConversionRates": {
+        "primaryunit": "un",
+        "secondaryunit": "kg",
+        "selectedunit": "primary",
+        "unitConversionRate": 0,
+        "minOrderQuantity": 1,
+        "stepQuantity": 1,
+        "maxNumberOfUnitsPerSale": 60,
+        "hasAlternativeSaleUnit": false,
+        "hasConversionRate": false
+       }
+      },
+      "price": {
+       "sales": {
+        "value": 0.85
+       },
+       "list": null
+      },
+      "priceTotal": {
+       "value": 2.55,
+       "basePriceValue": 2.55,
+       "nonAdjustedPriceValue": 2.55,
+       "promoUnitPrice": 0.85
+      },
+      "badgeInfo": {
+       "promo": null,
+       "general": null,
+       "advertised": null,
+       "pictograms": []
+      },
+      "promotions": null
+     }
+    ]
+   }
+  ],
+  "totals": {
+   "productsTotalPriceOnly": 10.62,
+   "productsTotalPriceOnlyWithSDR": 10.62,
+   "totalSDRDeposit": "0,00 €",
+   "totalShippingCostNumber": 0,
+   "orderLevelDiscountTotal": {
+    "value": 0
+   },
+   "shippingLevelDiscountTotal": {
+    "value": 0
+   },
+   "grandTotalNumber": 10.62,
+   "grandTotal": "10,62 €",
+   "subTotal": "10,62 €"
+  }
+ }
+}

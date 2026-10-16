@@ -92,7 +92,7 @@ test('cart models preserve unknown prices and unresolved quantity units', () => 
     customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, items: [{
       productId: '00123', cartItemId: null, name: 'Milk', kind: 'product', storefrontQuantity: null,
       quantity: { status: 'unknown', value: 2, rawText: null },
-      price: null, lineTotal: null, estimated: false,
+      price: null, lineTotal: null, estimated: false, promotions: [], lineTotalBeforeDiscount: null,
     }],
   };
   assert.deepEqual(parseJson(CartSchema, JSON.stringify(cart), 'cart'), { ok: true, value: cart });

@@ -1,6 +1,6 @@
 import { load } from 'cheerio';
-import { FavoriteProductSchema, ProductSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, parseProductReference, parseValue } from '../domain/index.js';
-import type { FavoriteProduct, PriceTag, Product, Result, ToolError } from '../domain/index.js';
+import { FavoriteProductSchema, ProductSchema, drainedPricePerKg, unitPriceOf, parsePriceTag, parseProductReference, parseValue, parsePromotionLabel, parsePromotionDates, previousPriceOf } from '../domain/index.js';
+import type { FavoriteProduct, PriceTag, Product, Promotion, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { parsePackageLabel } from './package.js';
 import { record } from './records.js';
@@ -35,6 +35,21 @@ export function packageLabel(label: string): string | null {
 /** The amount in a "PVPR 6,00€" label, the recommended retail price shown beside a promotional price. */
 export function recommendedPriceLabel(label: string): string {
   return text(label).replace(/^PVPR\s*/i, '');
+}
+/**
+ * Promotions shown for a product: the promotional badge (a recommended price or an immediate
+ * discount) and the multi-buy message. The dates on a product page are given once, so they are kept
+ * only when there is a single promotion they can belong to.
+ */
+export function pagePromotions(shown: { badge: string; message: string; struck: string; recommended: PriceTag | null; price: PriceTag | null; validity?: string }): Promotion[] {
+  const found = [shown.badge, shown.message].map(parsePromotionLabel).filter((promotion): promotion is Promotion => promotion !== null);
+  for (const promotion of found) {
+    if (promotion.kind === 'recommended_price') promotion.previousPrice = shown.recommended;
+    if (promotion.kind === 'immediate_discount') promotion.previousPrice = previousPriceOf(shown.struck, shown.price);
+  }
+  const dates = shown.validity ? parsePromotionDates(shown.validity) : null;
+  if (dates && found.length === 1) Object.assign(found[0]!, dates);
+  return found;
 }
 /** A product photo on the website's own image service; anything else is not used. */
 export function productImageUrl(value: string | undefined | null): string | null {
@@ -101,6 +116,9 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
     const product = parseValue(ProductSchema, { ...reference.value, name, url: storefrontUrl(href), price: main.price,
       secondaryPrice: secondary.price, packageText: packageLabel(quantity), package: parsePackageLabel(packageLabel(quantity)), minimumText: minimumLabel(quantity),
       recommendedPrice: recommended.price, availability, ...facts, drainedPrice: drained,
+      promotions: pagePromotions({ badge: card.find('.ct-product-tile-badge--promotional img').first().attr('alt') ?? '',
+        message: card.find(`.dual-badge-${reference.value.productId}.dual-badge-message .dual-badge-message-text`).first().text(),
+        struck: card.find('.prices-wrapper .list .strike-through').first().text(), recommended: recommended.price, price: main.price }),
       unitPrice: unitPriceOf(main.price, secondary.price, pack, drained),
       // A tile can also show badge images; the product photo comes from the catalogue's image folder.
       imageUrl: productImageUrl(card.find('img').toArray().map(img => $(img).attr('data-src') ?? $(img).attr('src') ?? '').find(src => /master-catalog/.test(src))) }, 'product');

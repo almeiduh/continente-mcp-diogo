@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ToolErrorSchema } from './errors.js';
 import { CartItemIdSchema, OrderIdSchema, OrderNumberSchema, ProductIdSchema, ProductReferenceSchema } from './identity.js';
 import { MoneySchema, PriceTagSchema, UnitPriceSchema } from './money.js';
+import { PromotionSchema } from './promotion.js';
 import { ObservedQuantitySchema, QuantitySchema, ProductSaleRulesSchema } from './quantity.js';
 
 const productDetails = {
@@ -38,6 +39,8 @@ export const ProductSchema = FavoriteProductSchema.safeExtend({
   secondaryPrice: PriceTagSchema.nullable(),
   /** The recommended retail price (PVPR) shown beside a promotional price; null when the website shows none. */
   recommendedPrice: PriceTagSchema.nullable(),
+  /** Promotions the website shows for the product; empty when none. */
+  promotions: z.array(PromotionSchema),
   ...packDetails,
   /** Whether the results page offers the product: `unknown` unless its badge and add button agree. */
   availability: z.enum(['available', 'unavailable', 'unknown']),
@@ -70,6 +73,10 @@ export const CartItemSchema = z.strictObject({
   lineTotal: MoneySchema.nullable(),
   /** The line total is an estimate: products sold by the piece but priced by weight are charged by the weight picked. */
   estimated: z.boolean(),
+  /** Promotions on the line; empty when none. */
+  promotions: z.array(PromotionSchema),
+  /** The line total before a discount the cart applies to the line, such as a multi-buy; null when none applies. */
+  lineTotalBeforeDiscount: MoneySchema.nullable(),
 });
 export type CartItem = z.infer<typeof CartItemSchema>;
 /** Each amount as the website reports it, or null when it reports none. */
@@ -139,7 +146,7 @@ export type FavoritesCache = z.infer<typeof FavoritesCacheSchema>;
 
 export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   name: productDetails.name, url: productDetails.url, price: PriceTagSchema.nullable(),
-  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), ...packDetails, drainedPrice: PriceTagSchema.nullable(), unitPrice: UnitPriceSchema.nullable(), imageUrl: z.url().nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
+  secondaryPrice: PriceTagSchema.nullable(), recommendedPrice: PriceTagSchema.nullable(), promotions: z.array(PromotionSchema), ...packDetails, drainedPrice: PriceTagSchema.nullable(), unitPrice: UnitPriceSchema.nullable(), imageUrl: z.url().nullable(), availability: z.enum(['available', 'unavailable', 'unknown']),
   saleRules: z.discriminatedUnion('status', [
     z.strictObject({ status: z.literal('available'), rules: ProductSaleRulesSchema }),
     z.strictObject({ status: z.literal('unavailable'), error: ToolErrorSchema }),

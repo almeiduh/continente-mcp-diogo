@@ -3,6 +3,7 @@ export * from './errors.js';
 export * from './validation.js';
 export * from './identity.js';
 export * from './money.js';
+export * from './promotion.js';
 export * from './quantity.js';
 export * from './outcomes.js';
 export * from './models.js';

@@ -82,7 +82,7 @@ Each product has `productId`, `productSlug`, `name`, `url`, `price`, `secondaryP
 `packageText` (the pack size as shown, such as `940 gr`, `2 x 52 gr` or
 `400 gr (peso escorrido 260 gr)`), `package`, `minimumText` (a minimum purchase such as
 `600 gr (3 un)`), `recommendedPrice`, `availability`, `brand`, `category`, `drainedPrice`,
-`unitPrice`, `imageUrl` (the product photo on the website) and `favorite`.
+`unitPrice`, `promotions`, `imageUrl` (the product photo on the website) and `favorite`.
 
 - `category` is the website's category path, such as
   `Supermercado/Congelados/Frutas e Legumes/Legumes`, and `brand` its brand; either is `null`
@@ -129,9 +129,34 @@ Centilitres are given in millilitres (`75 cl` is 750 ml), and a free extra such 
 `120 gr + 30 gr GRÁTIS` counts in `net` (150 g).
 
 `recommendedPrice` is the recommended retail price (PVPR) the website shows beside the price
-on many promotions, or `null` when it shows none. Promotions such as multi-buy offers have no
-PVPR, so it is not a complete list of promotions. Compare it with `price` rather than treating
+on many promotions, or `null` when it shows none. Compare it with `price` rather than treating
 its presence as a discount.
+
+#### Promotions
+
+`promotions` lists the promotions the website shows for a product, and is empty when there are
+none. Each has the website's own `label` and a `kind`:
+
+| `kind` | Label | Structured fields |
+| --- | --- | --- |
+| `recommended_price` | `PVP Recomendado: 2,71€/un` | `previousPrice`: the PVPR |
+| `immediate_discount` | `Desconto Imediato: 6%` or `Desconto Imediato: 3€` | `percentOff` or `amountOff`; `previousPrice`: the struck-through price |
+| `multi_buy` | `Leve 3 Por 1€` | `bundle`: `{ quantity, total }` |
+| `nth_unit_discount` | `20% na 2ª un` | `percentOff` and `nthUnit` (2 for the second unit) |
+| `other` | anything else | none |
+
+Fields that do not apply, or that the label does not state, are `null`. `previousPrice` is for
+the same unit as `price`. The price shown already includes a recommended price or an immediate
+discount; a multi-buy or nth-unit offer is applied by the cart, so `price` does not include it.
+`validFrom` and `validTo` are the promotion's first and last days (Lisbon dates). Product pages
+and the cart give them; search results do not. A product page gives a single date line, so the
+dates are kept only when the product has one promotion.
+
+```json
+{ "kind": "multi_buy", "label": "Leve 3 Por 1€", "previousPrice": null, "percentOff": null,
+  "amountOff": null, "bundle": { "quantity": 3, "total": { "currency": "EUR", "minorUnits": 100 } },
+  "nthUnit": null, "validFrom": "2026-09-29", "validTo": "2026-10-18" }
+```
 
 A result the server cannot read does not fail the search. It is skipped, or kept with an
 unknown price when only the price is unreadable, and described in `failures`; the result is
@@ -156,7 +181,7 @@ only works with the query it came from.
 ### `get_product`
 
 Returns `productId`, `productSlug`, `name`, `url`, `price`, `secondaryPrice`, `recommendedPrice`,
-`packageText`, `package`, `minimumText` and `drainedPrice` (as in `search_products`), `availability`
+`promotions` (with their dates), `packageText`, `package`, `minimumText` and `drainedPrice` (as in `search_products`), `availability`
 (`available`, `unavailable` or `unknown`) and `saleRules`:
 
 ```json
@@ -252,7 +277,8 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
 ### `get_cart`
 
 `data`: `observedAt`, `customerAuthenticated`, `items` (each with `productId`, `cartItemId`,
-`name`, `kind`, `quantity`, `price`, `lineTotal`, `estimated`) and `totals`.
+`name`, `kind`, `quantity`, `price`, `lineTotal`, `estimated`, `promotions`,
+`lineTotalBeforeDiscount`) and `totals`.
 
 - `kind` is `bag` for the shopping bags the website adds to the cart by itself, and `product`
   for everything else.
@@ -265,6 +291,10 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
 - `price` is the unit price with what it is for: per item, or per kg for products sold by the
   piece (2 apples at €2.99/kg cost less than €5.98). `null` when the line does not say what its
   price is for. `lineTotal` is the line's total as the website reports it.
+- `promotions` are the line's promotions, as in [`search_products`](#promotions), with their
+  dates. When the cart discounts the line itself, as it does for a multi-buy (3 for €1.00),
+  `lineTotal` is after the discount and `lineTotalBeforeDiscount` before it; otherwise
+  `lineTotalBeforeDiscount` is `null`.
 - `storefrontQuantity` is what the website holds in its own unit for products sold by the piece
   but priced by weight: the kilograms in the cart, such as 1.16 kg for 4 onions of 0.29 kg,
   which is also their estimated weight. It is `null` for other products. `preview_basket` lines

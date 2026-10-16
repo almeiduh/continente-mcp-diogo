@@ -15,7 +15,7 @@ const un = (value: number) => ({ value, unit: 'un' as const });
 function product(id: string, name: string, options: { price: number; per: 'item' | 'kg'; kgPerPiece?: number; minimum?: number; availability?: ProductDetails['availability']; packageText?: string }): ProductDetails {
   const weighted = options.kgPerPiece !== undefined;
   return { productId: ProductIdSchema.parse(id), productSlug: null, name, url: `https://www.continente.pt/produto/p-${id}.html`,
-    price: { amount: eur(options.price), per: options.per }, secondaryPrice: null, recommendedPrice: null,
+    price: { amount: eur(options.price), per: options.per }, secondaryPrice: null, recommendedPrice: null, promotions: [],
     packageText: options.packageText ?? null, package: null, minimumText: null, drainedPrice: null, unitPrice: null, imageUrl: null, availability: options.availability ?? 'available',
     saleRules: { status: 'available', rules: { saleUnit: 'un', storefrontUnit: weighted ? 'kg' : 'un', storefrontUnitsPerSaleUnit: options.kgPerPiece ?? 1,
       minimum: un(options.minimum ?? 1), maximum: un(99), step: un(1) } } };
