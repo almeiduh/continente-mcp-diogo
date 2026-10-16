@@ -1,5 +1,5 @@
 import type { BasketPreview, BasketPreviewLine, Cart, Money, ObservedQuantity, ProductDetails, Quantity, Result, ToolError } from '../domain/index.js';
-import { CartItemIdSchema, failure, parseProductReference, success } from '../domain/index.js';
+import { CartItemIdSchema, checkoutFor, failure, parseProductReference, success } from '../domain/index.js';
 import { selectCartItem, validateSaleQuantity } from '../parsers/cart.js';
 import type { CatalogService } from './catalog.js';
 import type { CartService } from './cart.js';
@@ -23,6 +23,27 @@ const change = (from: number, to: number): BasketPreviewLine['change'] =>
   Math.abs(from - to) <= 0.0005 ? 'none' : to === 0 ? 'remove' : from === 0 ? 'add' : to > from ? 'increase' : 'decrease';
 
 /**
+ * The cart's products total once these lines are set: each line's current total is replaced by its
+ * estimated cost. A line with an error stays as it is. Null when any amount needed is unknown.
+ */
+function productsAfter(cart: Cart, lines: BasketPreviewLine[]): Money | null {
+  if (!cart.totals.products) return null;
+  let total = cart.totals.products.minorUnits;
+  for (const line of lines) {
+    if (line.error !== null) continue;
+    if (line.estimatedCost === null) return null;
+    const selected = selectCartItem(cart, line.productId, line.cartItemId ?? undefined);
+    if (!selected.ok) return null;
+    if (selected.value) {
+      if (!selected.value.lineTotal) return null;
+      total -= selected.value.lineTotal.minorUnits;
+    }
+    total += line.estimatedCost.minorUnits;
+  }
+  return euro(total);
+}
+
+/**
  * What `set_cart_item_quantity` would do for each item, without changing anything: the cart is
  * read once and each product page once. Prices and stock can change before the cart is changed.
  */
@@ -37,8 +58,10 @@ export class BasketPreviewService {
     for (const item of items) lines.push(await this.line(item, cart.value, seen));
     const costs = lines.filter(line => line.error === null).map(line => line.estimatedCost);
     const total = costs.every(amount => amount !== null) ? euro(costs.reduce((sum, amount) => sum + amount!.minorUnits, 0)) : null;
+    const after = productsAfter(cart.value, lines);
     return success({ lines, estimatedCost: total, estimated: lines.some(line => line.error === null && line.estimated),
-      problems: lines.filter(line => line.error !== null || line.availability !== 'available').length });
+      problems: lines.filter(line => line.error !== null || line.availability !== 'available').length,
+      productsAfter: after, checkout: checkoutFor(after, cart.value.checkout.minimumOrder, cart.value.checkout.entregaZero) });
   }
 
   private async line(item: PreviewItem, cart: Cart, seen: Set<string>): Promise<BasketPreviewLine> {

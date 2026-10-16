@@ -20,6 +20,15 @@ const runtime = await import(new URL('../../dist/runtime.js', import.meta.url).h
   createShoppingApplication(options: { version: string; env: Record<string, string>; logger: (message: string) => void }): Application;
 };
 
+const { ENTREGA_ZERO_FREE_FROM } = await import(new URL('../../dist/domain/checkout.js', import.meta.url).href) as { ENTREGA_ZERO_FREE_FROM: { minorUnits: number } };
+const { minimumOrderOf } = await import(new URL('../../dist/parsers/cart.js', import.meta.url).href) as { minimumOrderOf(message: unknown): { minorUnits: number } | null };
+const ORIGIN = 'https://www.continente.pt';
+const fetchText = async (path: string, headers: Record<string, string> = {}) => {
+  const response = await fetch(ORIGIN + path, { headers: { 'Accept-Language': 'pt-PT', 'User-Agent': 'Mozilla/5.0 (continentept-mcp site check)', ...headers } });
+  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+  return response.text();
+};
+
 const dataDir = mkdtempSync(join(tmpdir(), 'continente-site-check-'));
 const app = runtime.createShoppingApplication({
   version: 'site-check', logger: () => {},
@@ -78,6 +87,15 @@ try {
         : !whole(rules.rules.minimum) || !whole(rules.rules.maximum) || !whole(rules.rules.step) ? 'minimum, maximum or step is not a whole number of pieces' : null;
     report(issue === null, 'Weighted product page', issue ?? `product ${apple.productId}, minimum ${rules?.rules?.minimum?.value} un, maximum ${rules?.rules?.maximum?.value} un`);
   }
+
+  // The cart states the minimum order; the EntregaZero free-delivery threshold is only on the help pages.
+  const minicart = JSON.parse(await fetchText('/on/demandware.store/Sites-continente-Site/default/Cart-MiniCartShow', { 'X-Requested-With': 'XMLHttpRequest' })) as { resources?: { minimumOrderValueWarning?: unknown } };
+  const minimum = minimumOrderOf(minicart.resources?.minimumOrderValueWarning);
+  report(minimum !== null, 'Minimum order', minimum ? `€${(minimum.minorUnits / 100).toFixed(2)}` : `message not recognised: ${JSON.stringify(minicart.resources?.minimumOrderValueWarning ?? null)}`);
+  const help = (await fetchText('/loja-online/ajuda/entregazero/existe-valor-minimo-de-compra-para-utilizar-o-servico-entregazero/')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const stated = /valor m[ií]nimo de (\d+)\s*€/i.exec(help)?.[1];
+  report(stated !== undefined && Number(stated) * 100 === ENTREGA_ZERO_FREE_FROM.minorUnits, 'EntregaZero threshold',
+    stated === undefined ? 'the help page no longer states a minimum' : `help page says €${stated}, the server assumes €${ENTREGA_ZERO_FREE_FROM.minorUnits / 100}`);
 } catch (error) {
   report(false, 'Check run', error instanceof Error ? error.message : String(error));
 } finally {

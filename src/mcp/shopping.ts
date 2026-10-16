@@ -3,7 +3,7 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
 import type { ResourceHandler, ToolHandler } from './server.js';
 import { PICKER_HTML, PICKER_META, PICKER_MIME_TYPE, PICKER_URI } from './picker.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
-import type { BasketPreview, PriceTag, ProductId, ProductLabel, Promotion, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
+import type { BasketPreview, Checkout, PriceTag, ProductId, ProductLabel, Promotion, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure, parseProductReference } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
@@ -153,6 +153,17 @@ function formatLabels(labels: LabelEntry[]): string {
   }));
   return `Product labels, from the website's copy (the packaging prevails; nothing here is inferred):\n\n${list}`;
 }
+/** Minimum order and delivery for a products total, as `get_cart` and `preview_basket` say them. */
+function checkoutLines(checkout: Checkout, products: Money | null): string[] {
+  const short = (target: Money) => products && products.minorUnits < target.minorUnits ? euros({ currency: 'EUR', minorUnits: target.minorUnits - products.minorUnits }) : null;
+  const minimum = checkout.minimumOrder;
+  return [
+    ...(minimum ? [`Minimum order: ${euros(minimum)}, ${checkout.meetsMinimum === true ? 'reached' : checkout.meetsMinimum === false ? `${short(minimum)} to go` : 'not known whether reached'}.`] : []),
+    checkout.deliveryFee === 'free' ? `Delivery: free with your EntregaZero (orders of ${euros(checkout.freeDeliveryFrom)} or more).`
+      : 'Delivery fee: set at checkout by day, time slot and area; not included here.' +
+        (checkout.freeDeliveryFrom ? ` Your EntregaZero makes it free from ${euros(checkout.freeDeliveryFrom)}${short(checkout.freeDeliveryFrom) ? `: ${short(checkout.freeDeliveryFrom)} to go` : ''}.` : ''),
+  ];
+}
 function formatPreview(preview: BasketPreview): string {
   const list = numbered(preview.lines.map(line => {
     const head = `${line.name ?? 'Unknown product'} [${line.productId}]`;
@@ -164,7 +175,9 @@ function formatPreview(preview: BasketPreview): string {
     return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'}${weight} (cart has ${now})${cost}\n   ${pack}${line.availability}`;
   }));
   const total = preview.estimatedCost ? `${preview.estimated ? 'about ' : ''}${euros(preview.estimatedCost)}` : 'unknown';
-  return `Basket preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}` +
+  const after = preview.productsAfter ? `\nProducts in the cart after these changes: ${preview.estimated ? 'about ' : ''}${euros(preview.productsAfter)}` : '';
+  return `Basket preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}${after}` +
+    `\n${checkoutLines(preview.checkout, preview.productsAfter).join('\n')}` +
     (preview.problems ? `\n${preview.problems} line(s) need attention: refused or not available.` : '') +
     '\nApply each line with set_cart_item_quantity. Prices and stock can change before then.';
 }
@@ -292,7 +305,8 @@ export class ShoppingHandlers {
     const summary = [`Products: ${totals.products === null ? 'unavailable' : euros(totals.products)}`,
       ...(totals.bags !== null && totals.bags.minorUnits > 0 ? [`Bags: ${euros(totals.bags)}`] : []), ...optional,
       `Total to pay: ${totals.grandTotal === null ? 'unavailable' : `${totals.estimated ? 'about ' : ''}${euros(totals.grandTotal)}`}`,
-      ...(totals.estimated ? ['Products sold by weight are charged by the weight picked, so the final amount can differ.'] : [])].join('\n');
+      ...(totals.estimated ? ['Products sold by weight are charged by the weight picked, so the final amount can differ.'] : []),
+      ...checkoutLines(cart.checkout, totals.products)].join('\n');
     return response(cart, `Cart (${cart.items.length} lines):\n\n${list}\n\n${summary}\nCheckout happens on the website: ${CHECKOUT_URL}`);
   }
 
@@ -430,13 +444,15 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
     tool('get_cart', 'Get cart',
       'Read the shopping cart: each line with productId, cartItemId, kind (product or bag), quantity, unit price (per item or per kg) ' +
       'and lineTotal, its promotions and lineTotalBeforeDiscount when the cart discounts the line, plus the totals ' +
-      '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
+      '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay), and checkout: the minimum order and whether the ' +
+      'delivery fee is free with EntregaZero or set at checkout by day, slot and area (it is not in the totals until then). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),
     tool('preview_basket', 'Preview basket',
       'Check products and the total wanted of each before changing the cart, without changing anything. For each: what the cart holds, ' +
       'what set_cart_item_quantity would do (add, increase, decrease, remove or none), why it would be refused (such as a minimum or step), ' +
-      'availability, pack details and the estimated cost. Reads one product page per item, at most 30. Prices and stock can change before you apply it.',
+      'availability, pack details and the estimated cost, plus the products total after the changes with its minimum order and delivery fee. ' +
+      'Reads one product page per item, at most 30. Prices and stock can change before you apply it.',
       contracts.PreviewBasketInput, contracts.PreviewOutput, READ, args => handlers.previewBasket(args.items)),
     tool('add_cart_item', 'Add to cart',
       'Add an amount of a product to the cart, on top of any quantity already there. quantity is in the product sale unit (default 1). ' +

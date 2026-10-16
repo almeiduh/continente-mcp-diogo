@@ -3,6 +3,7 @@ import { ToolErrorSchema } from './errors.js';
 import { CartItemIdSchema, OrderIdSchema, OrderNumberSchema, ProductIdSchema, ProductReferenceSchema } from './identity.js';
 import { MoneySchema, PriceTagSchema, UnitPriceSchema } from './money.js';
 import { PromotionSchema } from './promotion.js';
+import { CheckoutSchema } from './checkout.js';
 import { ObservedQuantitySchema, QuantitySchema, ProductSaleRulesSchema } from './quantity.js';
 
 const productDetails = {
@@ -100,6 +101,7 @@ export const CartSchema = z.strictObject({
   customerAuthenticated: z.boolean(),
   items: z.array(CartItemSchema),
   totals: CartTotalsSchema,
+  checkout: CheckoutSchema,
 });
 export type Cart = z.infer<typeof CartSchema>;
 
@@ -228,5 +230,9 @@ export const BasketPreviewSchema = z.strictObject({
   estimated: z.boolean(),
   /** Lines with an error or a product that is not available. */
   problems: z.number().int().nonnegative(),
+  /** The cart's products total after these changes: the current total with these lines at their estimated cost; null when any part is unknown. */
+  productsAfter: MoneySchema.nullable(),
+  /** The minimum order and delivery fee for `productsAfter`. */
+  checkout: CheckoutSchema,
 });
 export type BasketPreview = z.infer<typeof BasketPreviewSchema>;

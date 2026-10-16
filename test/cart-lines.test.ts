@@ -71,7 +71,8 @@ test('get_cart text shows units, marks bags and lists each total', async () => {
   assert.match(text, /Maçã Pink Lady — 3 un \(about 0\.6 kg\) × €2\.50\/kg, line about €1\.50\n/);
   assert.match(text, /Saco \(bag\) — 2 un × €0\.10, line €0\.20\n/);
   assert.match(text, /Products: €4\.05\nBags: €0\.20\nDeposit: €0\.10\nDiscounts: €0\.50\nTotal to pay: about €3\.85\nProducts sold by weight are charged by the weight picked/);
-  assert.doesNotMatch(text, /unit unknown|each|Delivery/);
+  assert.doesNotMatch(text, /unit unknown|each|Delivery: €/);
+  assert.match(text, /\nDelivery fee: set at checkout by day, time slot and area; not included here\.\n/);
   await app.close();
 });
 

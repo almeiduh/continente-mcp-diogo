@@ -309,12 +309,26 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   | `products` | Product lines only, without bags or deposit |
   | `bags` | The bag lines |
   | `deposit` | Bottle and can deposit (SDR) |
-  | `delivery` | Delivery cost, once the website has one |
+  | `delivery` | Delivery cost as the cart has it now: €0 until a delivery slot is chosen at checkout (see `checkout`) |
   | `discounts` | Amount taken off by order and delivery discounts |
   | `grandTotal` | The amount to pay as the website shows it. It includes the bags. |
   | `estimated` | Some lines are charged by weight, so `products` and `grandTotal` are estimates |
 
   Report `grandTotal` as the amount to pay, and don't add the other fields to it yourself.
+- `checkout` says what checkout adds or requires beyond the lines, judged on `totals.products`:
+
+  | Field | Meaning |
+  | --- | --- |
+  | `minimumOrder` | The website's minimum order value, as the cart states it (€20 in October 2026) |
+  | `meetsMinimum` | Whether the products total reaches it; `null` when either is unknown |
+  | `entregaZero` | Whether the account has an active EntregaZero subscription; `null` when signed out |
+  | `freeDeliveryFrom` | With EntregaZero, delivery is free from this products total (€50); `null` without it |
+  | `deliveryFee` | `free` when EntregaZero applies to this total; otherwise `set_at_checkout` |
+
+  The delivery fee depends on the day, time slot and area chosen at checkout, so it is not in the
+  totals until then. An order the website splits into several deliveries is charged only the
+  highest of their fees. The €50 EntregaZero threshold is not in the cart's data: it comes from
+  Continente's help pages, and the weekly site check confirms they still say so.
 
 ### `preview_basket`
 
@@ -323,8 +337,10 @@ changing anything. It reads the cart once and each product page once, so it take
 second per item.
 
 `data`: `observedAt`, `lines`, `estimatedCost` (the sum of the lines that would be applied, or
-`null` when any of their costs is unknown), `estimated` and `problems` (lines that would be
-refused or whose product is not available). Each line has:
+`null` when any of their costs is unknown), `estimated`, `problems` (lines that would be
+refused or whose product is not available), `productsAfter` (the cart's products total once the
+lines are applied: the current total with these lines at their estimated cost, or `null` when any
+part is unknown) and `checkout` (as in [`get_cart`](#get_cart), for `productsAfter`). Each line has:
 
 | Field | Meaning |
 | --- | --- |

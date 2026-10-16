@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `get_cart` and `preview_basket` have `checkout`: the minimum order the cart states (`minimumOrder`, `meetsMinimum`), whether the account has EntregaZero, and `deliveryFee`, which is `free` when EntregaZero applies (orders of €50 or more) and otherwise `set_at_checkout`, as the fee depends on the day, slot and area chosen at checkout. `preview_basket` also gives `productsAfter`, the cart's products total once its lines are applied, and judges the minimum order and delivery on it. The text says, for example, "Minimum order: €20.00, reached." and "Delivery: free with your EntregaZero (orders of €50.00 or more).", or how much is still to go. The weekly site check confirms the €50 EntregaZero threshold on Continente's help pages.
+
 ## [0.10.0] - 2026-10-16
 
 ### Added

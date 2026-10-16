@@ -89,7 +89,7 @@ test('cart outcomes prevent contradictory confirmation, failure and automatic re
 
 test('cart models preserve unknown prices and unresolved quantity units', () => {
   const cart = {
-    customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, items: [{
+    customerAuthenticated: true, totals: { products: null, bags: null, deposit: null, delivery: null, discounts: null, grandTotal: null, estimated: false }, checkout: { minimumOrder: null, meetsMinimum: null, entregaZero: null, freeDeliveryFrom: null, deliveryFee: 'set_at_checkout' }, items: [{
       productId: '00123', cartItemId: null, name: 'Milk', kind: 'product', storefrontQuantity: null,
       quantity: { status: 'unknown', value: 2, rawText: null },
       price: null, lineTotal: null, estimated: false, promotions: [], lineTotalBeforeDiscount: null,

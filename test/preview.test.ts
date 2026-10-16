@@ -56,7 +56,7 @@ test('a preview says what each line would do and cost, reading the cart once and
   assert.match(text, /^Basket preview, nothing was changed:/);
   assert.match(text, /Leite Meio Gordo \[8912985\] — decrease to 2 un \(cart has 3 un\), €1\.70\n   pack 1 lt, available/);
   assert.match(text, /Maçã Pink Lady \[7303767\] — increase to 5 un, about 1 kg \(cart has 3 un\), about €2\.50/);
-  assert.match(text, /Estimated cost of these lines: about €10\.39\n1 line\(s\) need attention/);
+  assert.match(text, /Estimated cost of these lines: about €10\.39\nProducts in the cart after these changes: about €10\.39\nDelivery fee: set at checkout by day, time slot and area; not included here\.\n1 line\(s\) need attention/);
 });
 
 test('lines that would be refused say why and leave the estimate to the others', async t => {

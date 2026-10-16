@@ -1,6 +1,6 @@
 import { load } from 'cheerio';
 import { z } from 'zod';
-import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, failure, lisbonDate, parseMoneyAmount, parseProductReference, parsePromotionLabel, parseValue, success } from '../domain/index.js';
+import { CartSchema, ProductSaleRulesSchema, QuantityUnitSchema, checkoutFor, failure, lisbonDate, parseMoneyAmount, parseProductReference, parsePromotionLabel, parseValue, success } from '../domain/index.js';
 import type { Cart, CartItem, CartTotals, Money, PriceTag, ProductId, ProductSaleRules, Promotion, Quantity, QuantityUnit, Result, ToolError } from '../domain/index.js';
 import { field, record } from './records.js';
 import { storefrontUrl } from './catalog.js';
@@ -136,6 +136,12 @@ function cartTotals(input: unknown, lines: unknown[], bag: ProductId | null, est
   };
 }
 
+/** The amount in the cart's "Encomenda mínima: 20€." message. */
+export function minimumOrderOf(message: unknown): Money | null {
+  const amount = typeof message === 'string' ? /m[ií]nima\D*?(\d+(?:[.,]\d{1,2})?)\s*€/i.exec(message)?.[1] : undefined;
+  return amount ? money(amount) : null;
+}
+
 export function parseCartResponse(input: unknown): Result<Cart, ToolError> {
   const lines = cartLines(input);
   if (!lines) return unrecognizedCart();
@@ -150,7 +156,10 @@ export function parseCartResponse(input: unknown): Result<Cart, ToolError> {
   const lineIds = items.map(item => item.cartItemId).filter(id => id !== null);
   if (new Set(lineIds).size !== lineIds.length) return failure('invalid_data', 'The cart contains duplicate line identifiers');
   const customerAuthenticated = field(input, 'resources', 'customerAuthenticated') === true;
-  return success({ customerAuthenticated, items, totals: cartTotals(input, lines, bag, items.some(item => item.estimated)) });
+  const totals = cartTotals(input, lines, bag, items.some(item => item.estimated));
+  const entregaZero = field(input, 'resources', 'isEntregaZero');
+  return success({ customerAuthenticated, items, totals,
+    checkout: checkoutFor(totals.products, minimumOrderOf(field(input, 'resources', 'minimumOrderValueWarning')), customerAuthenticated && typeof entregaZero === 'boolean' ? entregaZero : null) });
 }
 
 export interface SaleMetadata {
