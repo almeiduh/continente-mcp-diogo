@@ -50,11 +50,12 @@ test('a preview says what each line would do and cost, reading the cart once and
   ]);
   assert.equal(present(data.lines[0]).cartItemId, 'line-milk');
   assert.deepEqual([data.estimatedCost, data.estimated, data.problems], [eur(1039), true, 1]);
-  assert.equal(data.observedAt, '2026-10-14T12:00:00.000Z');
+  assert.equal(data.observedAt, '2026-10-14T12:00:00.000Z'); assert.equal(data.catalogView, 'unknown');
+  assert.deepEqual(data.lines.map(line => line.storefrontQuantity), [null, { value: 1, unit: 'kg' }, null, null]);
   const text = textOf(result);
   assert.match(text, /^Basket preview, nothing was changed:/);
   assert.match(text, /Leite Meio Gordo \[8912985\] — decrease to 2 un \(cart has 3 un\), €1\.70\n   pack 1 lt, available/);
-  assert.match(text, /Maçã Pink Lady \[7303767\] — increase to 5 un \(cart has 3 un\), about €2\.50/);
+  assert.match(text, /Maçã Pink Lady \[7303767\] — increase to 5 un, about 1 kg \(cart has 3 un\), about €2\.50/);
   assert.match(text, /Estimated cost of these lines: about €10\.39\n1 line\(s\) need attention/);
 });
 
@@ -84,3 +85,16 @@ test('a preview needs the cart and checks references before any read', async t =
 });
 
 function present<T>(value: T | undefined): T { assert.ok(value !== undefined); return value; }
+
+test('results say whose view of the catalogue they come from', async t => {
+  const { services } = injectedServices();
+  const status = (state: 'authenticated' | 'unauthenticated' | 'unknown', savedCookies: 'available' | 'missing') =>
+    async () => ({ browser: 'closed' as const, credentials: { hasEmail: true, hasPassword: true }, savedCookies, authentication: { state, checkedAt: null } });
+  const { client } = await connect(t, services);
+  for (const [state, cookies, expected] of [['authenticated', 'available', 'signed_in'], ['unauthenticated', 'available', 'signed_out'],
+    ['unknown', 'missing', 'signed_out'], ['unknown', 'available', 'unknown']] as const) {
+    services.session.getStatus = status(state, cookies);
+    const search = await client.callTool({ name: 'search_products', arguments: { query: 'milk' } });
+    assert.equal((search.structuredContent as { result: { data: { catalogView: string } } }).result.data.catalogView, expected, `${state}/${cookies}`);
+  }
+});

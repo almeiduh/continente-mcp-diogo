@@ -29,6 +29,9 @@ interface LineUnits {
   weighted: boolean;
   /** `secondaryQuantity` counts pieces only when the line has its own conversion rate. */
   countsPieces: boolean;
+  /** Storefront units (kg) per piece, when the line states it. */
+  rate: number | null;
+  storefrontUnit: QuantityUnit | null;
 }
 const PRICE_PER: Partial<Record<string, PriceTag['per']>> = { kg: 'kg', l: 'l', lt: 'l' };
 /**
@@ -42,13 +45,15 @@ function lineUnits(line: unknown): LineUnits | undefined {
   const rates = record(field(line, 'measurementInfo', 'quantityConversionRates'));
   if (!rates) return undefined;
   if (rates.hasAlternativeSaleUnit !== true && rates.hasConversionRate !== true) {
-    return rates.primaryunit === 'un' ? { quantity: 'un', price: 'item', weighted: false, countsPieces: true } : { quantity: null, price: null, weighted: false, countsPieces: false };
+    return rates.primaryunit === 'un' ? { quantity: 'un', price: 'item', weighted: false, countsPieces: true, rate: null, storefrontUnit: null }
+      : { quantity: null, price: null, weighted: false, countsPieces: false, rate: null, storefrontUnit: null };
   }
   const unit = QuantityUnitSchema.safeParse(rates.secondaryunit);
+  const storefront = QuantityUnitSchema.safeParse(rates.primaryunit === 'lt' ? 'l' : rates.primaryunit);
   const price = PRICE_PER[String(rates.primaryunit)] ?? null;
-  const rate = rates.unitConversionRate;
+  const rate = typeof rates.unitConversionRate === 'number' && rates.unitConversionRate > 0 ? rates.unitConversionRate : null;
   return { quantity: unit.success ? unit.data : null, price, weighted: unit.success && unit.data === 'un' && price !== null,
-    countsPieces: typeof rate === 'number' && rate > 0 };
+    countsPieces: rate !== null, rate, storefrontUnit: storefront.success ? storefront.data : null };
 }
 
 function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolError> {
@@ -67,6 +72,8 @@ function cartLine(line: unknown, bag: ProductId | null): Result<CartItem, ToolEr
     quantity: units?.quantity && units.countsPieces ? { status: 'known', quantity: { value: rawQuantity, unit: units.quantity } }
       : units?.quantity ? { status: 'unknown', value: null, rawText: null, reason: 'missing' }
         : { status: 'unknown', value: rawQuantity, rawText: null, ...(units ? { reason: 'unsupported_unit' } : {}) },
+    storefrontQuantity: units?.weighted && units.countsPieces && units.rate !== null && units.storefrontUnit
+      ? { value: Number((rawQuantity * units.rate).toPrecision(12)), unit: units.storefrontUnit } : null,
     price: unitPrice.value && units?.price ? { amount: unitPrice.value, per: units.price } : null,
     lineTotal: lineTotal.value,
     estimated: units?.weighted ?? false,
@@ -279,13 +286,16 @@ export function parseCartControls(html: string, productId: ProductId, cartItemId
  * the cart (`data-previous-val`), which divide into whole pieces of the product's weight. Null
  * unless that division is exact.
  */
-export function weightedLineQuantity(html: string, productId: ProductId, cartItemId: string | null): Quantity | null {
+export function weightedLineQuantity(html: string, productId: ProductId, cartItemId: string | null): { pieces: Quantity; storefront: Quantity } | null {
   const controls = parseCartControls(html, productId, cartItemId ?? undefined);
   if (!controls.ok || controls.value.previousValue === null || !/^\d+(?:\.\d+)?$/.test(controls.value.previousValue)) return null;
   const sale = parseSaleRules(controls.value.measureOptions);
   if (!sale.ok || !sale.value.alternativeUnit || sale.value.rules.saleUnit !== 'un') return null;
-  const pieces = Number(controls.value.previousValue) / sale.value.rules.storefrontUnitsPerSaleUnit;
-  return Number.isFinite(pieces) && Math.abs(pieces - Math.round(pieces)) < 1e-6 ? { value: Math.round(pieces), unit: 'un' } : null;
+  const storefront = QuantityUnitSchema.safeParse(sale.value.rules.storefrontUnit);
+  const amount = Number(controls.value.previousValue);
+  const pieces = amount / sale.value.rules.storefrontUnitsPerSaleUnit;
+  return storefront.success && Number.isFinite(pieces) && Math.abs(pieces - Math.round(pieces)) < 1e-6
+    ? { pieces: { value: Math.round(pieces), unit: 'un' }, storefront: { value: amount, unit: storefront.data } } : null;
 }
 export function parseMutationReceipt(input: unknown): Result<void, ToolError> {
   if (!record(input) || field(input, 'error') || field(input, 'success') === false ||

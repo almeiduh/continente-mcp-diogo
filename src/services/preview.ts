@@ -46,7 +46,7 @@ export class BasketPreviewService {
     const cartItemId = item.cartItemId === undefined ? null : CartItemIdSchema.parse(item.cartItemId);
     if (!reference.ok) throw new Error('Product references are checked before the preview');
     const { productId } = reference.value;
-    const blank = (error: ToolError): BasketPreviewLine => ({ productId, cartItemId, name: null, requested: null,
+    const blank = (error: ToolError): BasketPreviewLine => ({ productId, cartItemId, name: null, requested: null, storefrontQuantity: null,
       current: { status: 'unknown', value: null, rawText: null }, change: null, availability: null, price: null,
       packageText: null, package: null, saleRules: null, estimatedCost: null, estimated: false, error });
     const key = `${productId}|${item.cartItemId ?? ''}`;
@@ -62,7 +62,7 @@ export class BasketPreviewService {
     const current: ObservedQuantity = !selected.ok ? { status: 'unknown', value: null, rawText: null }
       : line ? line.quantity : { status: 'known', quantity: { value: 0, unit: unit ?? 'un' } };
     const base: BasketPreviewLine = { productId, cartItemId: cartItemId ?? line?.cartItemId ?? null, name: details.name,
-      requested: unit ? { value: item.quantity, unit } : null, current, change: null, availability: details.availability, price: details.price,
+      requested: unit ? { value: item.quantity, unit } : null, storefrontQuantity: null, current, change: null, availability: details.availability, price: details.price,
       packageText: details.packageText, package: details.package, saleRules: rules, estimatedCost: null, estimated: false, error: null };
     if (!selected.ok) return { ...base, error: selected.error };
     if (item.cartItemId !== undefined && !line) return { ...base, error: { code: 'not_found', message: 'No cart line has this cartItemId. Use get_cart to read current lines.', retryable: false } };
@@ -73,6 +73,8 @@ export class BasketPreviewService {
     if (!now) return { ...base, error: { code: 'invalid_data', message: 'The unit of the quantity in the cart is unknown', retryable: false } };
     if (now.unit !== requested.value.unit) return { ...base, error: { code: 'invalid_data', message: 'The cart line uses another unit than the product', retryable: false } };
     const priced = cost(details, requested.value);
-    return { ...base, requested: requested.value, change: change(now.value, requested.value.value), estimatedCost: priced.amount, estimated: priced.estimated };
+    const weight = rules && rules.storefrontUnit !== 'un' && rules.saleUnit === 'un'
+      ? { value: Number((requested.value.value * rules.storefrontUnitsPerSaleUnit).toPrecision(12)), unit: rules.storefrontUnit } : null;
+    return { ...base, requested: requested.value, storefrontQuantity: weight, change: change(now.value, requested.value.value), estimatedCost: priced.amount, estimated: priced.estimated };
   }
 }

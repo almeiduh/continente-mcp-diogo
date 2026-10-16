@@ -70,7 +70,12 @@ export function outputSchema<T extends z.ZodType>(data: T, extra: z.ZodRawShape 
 const integer = z.number().int().nonnegative();
 /** When the website was read; prices and availability can change after it. */
 const observed = { observedAt: z.iso.datetime({ offset: true }) };
-export const SearchData = z.strictObject({ ...observed, products: z.array(ProductSchema.safeExtend({ favorite: z.boolean() })),
+/**
+ * Whose view of the catalogue this is, from the server's last sign-in check. Availability and
+ * which products open can differ between signed in and signed out.
+ */
+const viewed = { catalogView: z.enum(['signed_in', 'signed_out', 'unknown']) };
+export const SearchData = z.strictObject({ ...observed, ...viewed, products: z.array(ProductSchema.safeExtend({ favorite: z.boolean() })),
   scanned: integer, returned: integer, favoritesLoaded: integer, completeness: z.enum(['complete', 'partial', 'unknown']),
   failures: z.array(ToolErrorSchema), nextCursor: z.string().nullable() });
 export const FavoritesData = z.strictObject({ favorites: z.array(FavoriteProductSchema), fetchedAt: z.iso.datetime({ offset: true }), completeness: z.enum(['complete', 'unknown']),
@@ -83,7 +88,7 @@ export const FrequencyData = z.strictObject({ products: z.array(PurchaseFrequenc
 export const SearchOutput = outputSchema(SearchData);
 export const FavoritesOutput = outputSchema(FavoritesData);
 export const CartData = CartSchema.safeExtend(observed);
-export const PreviewData = BasketPreviewSchema.safeExtend(observed);
+export const PreviewData = BasketPreviewSchema.safeExtend({ ...observed, ...viewed });
 export const PreviewOutput = outputSchema(PreviewData);
 export const CartOutput = outputSchema(CartData);
 const ConfirmedMutationData = CartMutationResultSchema.options[0].refine(value => value.requested.unit === value.confirmedQuantity.unit);
@@ -94,5 +99,5 @@ export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData
 export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ favorites: FavoritesStatusSchema, update: UpdateStatusSchema }));
 
 export const GetProductInput = z.strictObject({ productId: ProductReferenceInput });
-export const ProductDetailsData = ProductDetailsSchema.safeExtend(observed);
+export const ProductDetailsData = ProductDetailsSchema.safeExtend({ ...observed, ...viewed });
 export const ProductDetailsOutput = outputSchema(ProductDetailsData);

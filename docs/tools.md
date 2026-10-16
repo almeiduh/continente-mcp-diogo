@@ -107,8 +107,13 @@ A result the server cannot read does not fail the search. It is skipped, or kept
 unknown price when only the price is unreadable, and described in `failures`; the result is
 then `partial`.
 
-`data`: `observedAt`, `products`, `scanned`, `returned`, `favoritesLoaded`, `completeness`,
-`failures`, `nextCursor`.
+`data`: `observedAt`, `catalogView`, `products`, `scanned`, `returned`, `favoritesLoaded`,
+`completeness`, `failures`, `nextCursor`.
+
+`catalogView` says whose view of the catalogue the result is, from the server's last sign-in
+check: `signed_in`, `signed_out` (also when there is no saved session at all) or `unknown`.
+Availability, and whether a product page opens at all, can differ between the two.
+`get_product` and `preview_basket` return it too.
 
 Results keep the website's relevance order. Products in your saved favorites are marked
 `favorite: true`; pass `favoritesFirst: true` to move them to the top of the returned products.
@@ -174,6 +179,10 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
 - `price` is the unit price with what it is for: per item, or per kg for products sold by the
   piece (2 apples at €2.99/kg cost less than €5.98). `null` when the line does not say what its
   price is for. `lineTotal` is the line's total as the website reports it.
+- `storefrontQuantity` is what the website holds in its own unit for products sold by the piece
+  but priced by weight: the kilograms in the cart, such as 1.16 kg for 4 onions of 0.29 kg,
+  which is also their estimated weight. It is `null` for other products. `preview_basket` lines
+  have it too, for the desired total.
 - `estimated` is `true` for products sold by the piece but priced by weight: they are charged by
   the weight picked, so their `lineTotal` is an estimate. `totals.estimated` is `true` when any
   line is, and then `products` and `grandTotal` are estimates too.
@@ -205,6 +214,7 @@ refused or whose product is not available). Each line has:
 | --- | --- |
 | `productId`, `cartItemId`, `name` | The product, and the cart line it would change |
 | `requested` | The desired total, in the sale unit |
+| `storefrontQuantity` | The desired total in kg, for products sold by the piece but priced by weight |
 | `current` | What the cart holds now; zero when the product is not in it |
 | `change` | `add`, `increase`, `decrease`, `remove` or `none`; `null` when it would be refused |
 | `error` | Why it would be refused, such as `quantity_below_minimum` or a fractional number of pieces |

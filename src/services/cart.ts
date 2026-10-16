@@ -29,8 +29,8 @@ export class CartService {
     if (!page.ok) return cart;
     return success({ ...cart.value, items: cart.value.items.map(item => {
       if (!missing.includes(item)) return item;
-      const quantity = weightedLineQuantity(page.value, item.productId, item.cartItemId);
-      return quantity ? { ...item, quantity: { status: 'known' as const, quantity } } : item;
+      const amount = weightedLineQuantity(page.value, item.productId, item.cartItemId);
+      return amount ? { ...item, quantity: { status: 'known' as const, quantity: amount.pieces }, storefrontQuantity: amount.storefront } : item;
     }) });
   }
   private unknown(productId: ProductId, requested: Quantity, error: ToolError): MutationResult {

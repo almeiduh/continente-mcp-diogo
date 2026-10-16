@@ -51,6 +51,11 @@ export const CartItemSchema = z.strictObject({
   /** `bag` for the shopping bags the website adds to the cart on its own; `product` for everything else. */
   kind: z.enum(['product', 'bag']),
   quantity: ObservedQuantitySchema,
+  /**
+   * What the website holds in its own unit, for products sold by the piece but priced by weight:
+   * the kilograms in the cart, which are also the estimated weight. Null for other products.
+   */
+  storefrontQuantity: QuantitySchema.nullable(),
   /** Unit price with what it is for: per item, or per kg for products sold by the piece but priced by weight. */
   price: PriceTagSchema.nullable(),
   /** The line's total as the website reports it. */
@@ -141,6 +146,8 @@ export const BasketPreviewLineSchema = z.strictObject({
   name: z.string().nullable(),
   /** The desired total, in the product's sale unit; null when the sale unit is unknown. */
   requested: QuantitySchema.nullable(),
+  /** The desired total in the website's unit, for products sold by the piece but priced by weight: the estimated weight. */
+  storefrontQuantity: QuantitySchema.nullable(),
   /** What the cart holds now; zero when the product is not in it. */
   current: ObservedQuantitySchema,
   /** What `set_cart_item_quantity` would do; null when it would be refused. */

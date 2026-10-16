@@ -19,6 +19,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Cart and `preview_basket` lines have `storefrontQuantity` for products sold by the piece but priced by weight: the kilograms in the cart, which are also the estimated weight. `get_cart` text shows it, as in "4 un (about 1.16 kg)".
+- `search_products`, `get_product` and `preview_basket` return `catalogView`: whether the result is the signed-in or the signed-out catalogue, which can differ in availability and in which products open.
 - Search results have `availability`, from the results page: `available` or `unavailable` when its "Indisponível" badge and add button agree, `unknown` otherwise. Unavailable results are marked in the text.
 - `preview_basket`: for a list of products and desired totals, what the cart holds now, what `set_cart_item_quantity` would do, what would be refused and why, availability, pack details and the estimated cost. It changes nothing.
 - `search_products` accepts `cursor`: pass `nextCursor` back with the same query to continue right after the last product returned. Following cursors never skips or repeats a result. Before, products read beyond `limit` were dropped and `nextCursor` could not be used.

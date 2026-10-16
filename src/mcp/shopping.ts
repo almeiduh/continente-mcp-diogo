@@ -100,7 +100,8 @@ function formatPreview(preview: BasketPreview): string {
     const now = line.current.status === 'known' ? amount(line.current.quantity) : 'unknown';
     const cost = line.estimatedCost ? `, ${line.estimated ? 'about ' : ''}${euros(line.estimatedCost)}` : ', cost unknown';
     const pack = line.packageText ? `pack ${line.packageText}${line.package ? ` (${packSummary(line.package)})` : ''}, ` : '';
-    return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'} (cart has ${now})${cost}\n   ${pack}${line.availability}`;
+    const weight = line.storefrontQuantity ? `, about ${amount(line.storefrontQuantity)}` : '';
+    return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'}${weight} (cart has ${now})${cost}\n   ${pack}${line.availability}`;
   }));
   const total = preview.estimatedCost ? `${preview.estimated ? 'about ' : ''}${euros(preview.estimatedCost)}` : 'unknown';
   return `Basket preview, nothing was changed:\n\n${list}\n\nEstimated cost of these lines: ${total}` +
@@ -132,6 +133,13 @@ function mutationText(value: Extract<CartMutationResult, { outcome: 'confirmed' 
 export class ShoppingHandlers {
   constructor(private readonly services: ShoppingServices, private readonly update: UpdateStatus) {}
   private observedAt() { return (this.services.clock?.now() ?? new Date()).toISOString(); }
+  /** Signed in or out, as the session last observed it; without saved cookies the catalogue is the public one. */
+  private async catalogView(): Promise<'signed_in' | 'signed_out' | 'unknown'> {
+    const status = await this.services.session.getStatus?.().catch(() => undefined);
+    if (!status) return 'unknown';
+    if (status.authentication.state === 'authenticated') return 'signed_in';
+    return status.authentication.state === 'unauthenticated' || status.savedCookies === 'missing' ? 'signed_out' : 'unknown';
+  }
   /** An error result; sign-in failures before any cart write get guidance for fixing them. */
   private async failed(error: ToolError, mutation?: MutationSummary): Promise<CallToolResult> {
     if (error.code !== 'not_authenticated' || mutation?.outcome === 'unknown') return errorResult(error, mutation);
@@ -151,7 +159,7 @@ export class ShoppingHandlers {
     const text = page.items.length
       ? `${page.items.length} of ${scanned} scanned products for "${query}":\n\n${formatProductSearchResults(page.items)}`
       : `No products found for "${query}".`;
-    return response({ observedAt: this.observedAt(), products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length,
+    return response({ observedAt: this.observedAt(), catalogView: await this.catalogView(), products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length,
       completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor },
     text + (partial ? `\n\nPartial results: ${page.failures.length} problem(s) reading results; see failures.` : '') +
       (page.nextCursor ? `\n\nMore results are available. Pass cursor "${page.nextCursor}" with the same query to continue.` : ''),
@@ -163,7 +171,7 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error);
     const product = result.value;
     const partial = product.saleRules.status === 'unavailable' || product.price === null || product.availability === 'unknown';
-    return response({ ...product, observedAt: this.observedAt() }, formatProduct(product), partial ? 'partial' : 'success');
+    return response({ ...product, observedAt: this.observedAt(), catalogView: await this.catalogView() }, formatProduct(product), partial ? 'partial' : 'success');
   }
 
   async listFavorites(refresh: boolean): Promise<CallToolResult> {
@@ -182,7 +190,8 @@ export class ShoppingHandlers {
     if (!result.ok) return this.failed(result.error);
     const cart = { ...result.value, observedAt: this.observedAt() };
     if (!cart.items.length) return response(cart, 'The cart is empty.', 'empty');
-    const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)} × ${priced(item.price)}` +
+    const list = numbered(cart.items.map(item => `${item.name}${item.kind === 'bag' ? ' (bag)' : ''} — ${observed(item.quantity)}` +
+      `${item.storefrontQuantity ? ` (about ${amount(item.storefrontQuantity)})` : ''} × ${priced(item.price)}` +
       `${item.lineTotal ? `, line ${item.estimated ? 'about ' : ''}${euros(item.lineTotal)}` : ''}` +
       `\n   productId: ${item.productId}${item.cartItemId ? `, cartItemId: ${item.cartItemId}` : ''}`));
     const { totals } = cart;
@@ -214,7 +223,7 @@ export class ShoppingHandlers {
   async previewBasket(items: PreviewItem[]): Promise<CallToolResult> {
     const result = await this.recover(() => new BasketPreviewService(this.services.catalog, this.services.cart).preview(items));
     if (!result.ok) return this.failed(result.error);
-    return response({ ...result.value, observedAt: this.observedAt() }, formatPreview(result.value));
+    return response({ ...result.value, observedAt: this.observedAt(), catalogView: await this.catalogView() }, formatPreview(result.value));
   }
 
   async listOrders(limit: number, options: OrderListOptions): Promise<CallToolResult> {

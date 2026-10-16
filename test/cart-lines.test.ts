@@ -21,6 +21,7 @@ test('cart lines read their unit from their own sale rules, never from the selec
     ['7303767', 'product', { status: 'known', quantity: { value: 3, unit: 'un' } }],
     ['9999999', 'bag', { status: 'known', quantity: { value: 2, unit: 'un' } }],
   ]);
+  assert.deepEqual(cart.items.map(item => item.storefrontQuantity), [null, { value: 0.6, unit: 'kg' }, null]);
 });
 
 test('cart line prices say what they are for, and line totals come from the website', () => {
@@ -67,7 +68,7 @@ test('get_cart text shows units, marks bags and lists each total', async () => {
   assert.equal((result.structuredContent as { result: { data: { observedAt: string } } }).result.data.observedAt, '2026-10-15T12:00:00.000Z');
   const text = (result.content as { text: string }[])[0]?.text ?? '';
   assert.match(text, /Leite Meio Gordo — 3 un × €0\.85, line €2\.55\n/);
-  assert.match(text, /Maçã Pink Lady — 3 un × €2\.50\/kg, line about €1\.50\n/);
+  assert.match(text, /Maçã Pink Lady — 3 un \(about 0\.6 kg\) × €2\.50\/kg, line about €1\.50\n/);
   assert.match(text, /Saco \(bag\) — 2 un × €0\.10, line €0\.20\n/);
   assert.match(text, /Products: €4\.05\nBags: €0\.20\nDeposit: €0\.10\nDiscounts: €0\.50\nTotal to pay: about €3\.85\nProducts sold by weight are charged by the weight picked/);
   assert.doesNotMatch(text, /unit unknown|each|Delivery/);
@@ -91,13 +92,14 @@ const onion = ProductIdSchema.parse('5063153');
 test('a weighted line without its own conversion rate does not trust secondaryQuantity', () => {
   // 4 onions of 0.29 kg are 1.16 kg (1,96 € at 1,69 €/kg), but the JSON says 1.
   const line = present(valueOf(parseCartResponse(weightedCart())).items[0]);
-  assert.deepEqual(line.quantity, { status: 'unknown', value: null, rawText: null, reason: 'missing' });
+  assert.deepEqual([line.quantity, line.storefrontQuantity], [{ status: 'unknown', value: null, rawText: null, reason: 'missing' }, null]);
   assert.deepEqual([line.price, line.lineTotal, line.estimated], [{ amount: eur(169), per: 'kg' }, eur(196), true]);
 });
 
 test('the cart page holds the kilograms of a weighted line, which count whole pieces', () => {
-  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, 'line-onion'), { value: 4, unit: 'un' });
-  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, null), { value: 4, unit: 'un' });
+  const four = { pieces: { value: 4, unit: 'un' }, storefront: { value: 1.16, unit: 'kg' } };
+  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, 'line-onion'), four);
+  assert.deepEqual(weightedLineQuantity(weightedPage(), onion, null), four);
   for (const page of [weightedPage().replace('data-previous-val="1.16"', 'data-previous-val="1.1"'), weightedPage().replace('data-previous-val="1.16"', ''),
     weightedPage().replace('data-previous-val="1.16"', 'data-previous-val="abc"'), weightedPage().replace('"hasConversionRate":true,"hasAlternativeSaleUnit":true', '"hasConversionRate":false,"hasAlternativeSaleUnit":false')]) {
     assert.equal(weightedLineQuantity(page, onion, 'line-onion'), null);
@@ -109,7 +111,8 @@ test('get_cart and change confirmation count weighted pieces from the cart page 
   let pages = 0; let page = weightedPage();
   const client = { async fetchCart() { return ok(weightedCart()); }, async fetchCartControls() { pages++; return ok(page); } };
   const service = new CartService(client as never);
-  assert.deepEqual(present(valueOf(await service.getCart()).items[0]).quantity, { status: 'known', quantity: { value: 4, unit: 'un' } });
+  const line = present(valueOf(await service.getCart()).items[0]);
+  assert.deepEqual([line.quantity, line.storefrontQuantity], [{ status: 'known', quantity: { value: 4, unit: 'un' } }, { value: 1.16, unit: 'kg' }]);
   assert.equal(pages, 1);
   assert.equal(valueOf(await service.confirmCartItemQuantity(onion, { value: 4, unit: 'un' }, 4)).outcome, 'confirmed');
   assert.equal(valueOf(await service.confirmCartItemQuantity(onion, { value: 3, unit: 'un' }, 3)).outcome, 'unknown');
