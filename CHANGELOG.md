@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-16
+
 ### Fixed
 
 - `get_product` reported some products as available that could not be bought: the page's structured data said in stock while its add button was disabled. Availability now follows the page's own add button, with the structured data as a fallback.
@@ -125,7 +127,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/andredelgado/continente-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/andredelgado/continente-mcp/compare/v0.4.0...v0.5.0
