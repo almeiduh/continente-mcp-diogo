@@ -80,6 +80,8 @@ const observed = { observedAt: z.iso.datetime({ offset: true }) };
  */
 const viewed = { catalogView: z.enum(['signed_in', 'signed_out', 'unknown']) };
 export const SearchData = z.strictObject({ ...observed, ...viewed, products: z.array(ProductSchema.safeExtend({ favorite: z.boolean() })),
+  /** Products a filter left out only because the results page gave no category or brand for them. */
+  unknownToFilter: z.number().int().nonnegative(),
   scanned: integer, returned: integer, favoritesLoaded: integer, completeness: z.enum(['complete', 'partial', 'unknown']),
   failures: z.array(ToolErrorSchema), nextCursor: z.string().nullable() });
 export const FavoritesData = z.strictObject({ favorites: z.array(FavoriteProductSchema), fetchedAt: z.iso.datetime({ offset: true }), completeness: z.enum(['complete', 'unknown']),

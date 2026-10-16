@@ -60,6 +60,8 @@ export class FavoritesService {
 export interface SearchResult {
   page: PageResult<RankedProduct>;
   scanned: number;
+  /** Products a filter left out only because the results page gave no category or brand for them. */
+  unknownToFilter: number;
   favorites: FavoritesCache['favorites'];
 }
 export interface SearchOptions {
@@ -86,6 +88,13 @@ export function searchFilter(options: SearchOptions): (product: Product) => bool
   return product => (!category || (product.category !== null && fold(product.category).includes(category)))
     && (!excluded || product.category === null || !fold(product.category).includes(excluded))
     && (!brand || (product.brand !== null && fold(product.brand).includes(brand)));
+}
+/** Whether a product left out by the filter could still match it: its category or brand was not given. */
+function unknownToFilter(options: SearchOptions, product: Product): boolean {
+  const { category, brand, ...rest } = options;
+  const relaxed: SearchOptions = { ...rest, ...(category !== undefined && product.category !== null ? { category } : {}),
+    ...(brand !== undefined && product.brand !== null ? { brand } : {}) };
+  return ((category !== undefined && product.category === null) || (brand !== undefined && product.brand === null)) && searchFilter(relaxed)(product);
 }
 /** The price used to compare products: per drained kg when the label gives a drained weight, else per kg or litre. */
 export function comparablePrice(product: Product): { per: 'kg' | 'l'; minorUnits: number } | null {
@@ -179,14 +188,18 @@ export class CatalogService {
       parsed.value.products.forEach((product, position) => entries.push({ product, position: parsed.value.positions[position] ?? 0 }));
       failures.push(...parsed.value.problems);
     }
-    const seen = new Set<string>();
-    const fresh = entries.filter(({ product, position }) => position >= from && accept(product) && !seen.has(product.productId) && seen.add(product.productId));
+    const seen = new Set<string>(); const dropped = new Set<string>();
+    const fresh = entries.filter(({ product, position }) => {
+      if (position < from || seen.has(product.productId)) return false;
+      if (!accept(product)) { if (unknownToFilter(options, product)) dropped.add(product.productId); return false; }
+      return seen.add(product.productId);
+    });
     const taken = fresh.slice(0, limit);
     const last = taken.at(-1);
     const more = fresh.length > limit || Boolean(response.value.nextCursor);
     const nextCursor = more && last ? encodeSearchCursor(query, { start: last.position + 1, grid: response.value.grid ?? null }) : null;
     const favorites = cache?.favorites ?? [];
-    return success({ scanned: fresh.length, favorites, page: {
+    return success({ scanned: fresh.length, unknownToFilter: dropped.size, favorites, page: {
       items: (() => {
         const ranked = rankProductsByFavorites(taken.map(entry => entry.product), favorites, options.favoritesFirst ?? false);
         return options.sort === 'unit_price' ? byUnitPrice(ranked) : ranked;

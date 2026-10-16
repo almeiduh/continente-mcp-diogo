@@ -19,7 +19,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `search_products` filters by `category`, `excludeCategory` and `brand`, and sorts by `unit_price`. Results have `brand` and `category` (the website's category path), and filtered searches read further pages to fill `limit`.
+- `search_products` filters by `category`, `excludeCategory` and `brand`, and sorts by `unit_price`. Results have `brand` and `category` (the website's category path), filtered searches read further pages to fill `limit`, and `unknownToFilter` counts products left out only because the results page gave no category or brand for them.
 - `search_products` and `get_product` return `drainedPrice`, the price per kg of drained weight, for packs whose label states a drained weight.
 - `get_product_labels`: ingredients, allergens and nutrition for up to 20 products, as the website's copy of each label declares them. It returns the ingredients verbatim, the words they print in capitals, the allergen and "may contain traces" statements, and nutrients per 100 g or ml. Nothing is inferred.
 - Cart and `preview_basket` lines have `storefrontQuantity` for products sold by the piece but priced by weight: the kilograms in the cart, which are also the estimated weight. `get_cart` text shows it, as in "4 un (about 1.16 kg)".

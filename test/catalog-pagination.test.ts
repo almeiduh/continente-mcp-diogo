@@ -162,6 +162,13 @@ test('category and brand filters keep reading pages until enough products match'
   assert.deepEqual((await run({ category: 'LATICINIOS' })).ids, ['6']);
   assert.deepEqual((await run({ brand: 'continente' }, 5)).ids, ['3', '6']);
   assert.deepEqual((await run({ brand: 'nobody' }, 5)).ids, []);
+  // Products the page gives no category or brand for are counted when a filter leaves them out.
+  const unknown = [...specs.slice(0, 3), { id: '7', category: '', brand: '', price: '1,49€' }, { id: '8', category: pets, brand: '', price: '1,49€' }];
+  const counted = async (options: object) => valueOf(await new CatalogService(new CatalogClient(double<StorefrontClient>(catalogue(unknown, 10))), favorites).searchProducts('tofu', 10, options));
+  assert.deepEqual([(await counted({ category: 'supermercado' })).unknownToFilter, (await counted({ brand: 'continente' })).unknownToFilter], [1, 2]);
+  assert.equal((await counted({ excludeCategory: 'animais' })).unknownToFilter, 0);
+  assert.equal((await counted({ category: 'supermercado', brand: 'joya' })).unknownToFilter, 1);
+  assert.equal((await counted({})).unknownToFilter, 0);
   // A filtered cursor continues after the last product returned.
   const first = await run({ category: 'supermercado' }, 1);
   assert.deepEqual(first.ids, ['3']);

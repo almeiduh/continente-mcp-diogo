@@ -177,14 +177,15 @@ export class ShoppingHandlers {
   async searchProducts(query: string, limit: number, options: SearchOptions = {}): Promise<CallToolResult> {
     const result = await this.services.catalog.searchProducts(query, limit, options);
     if (!result.ok) return this.failed(result.error);
-    const { page, scanned, favorites } = result.value;
+    const { page, scanned, favorites, unknownToFilter } = result.value;
     const partial = page.completeness === 'partial';
     const text = page.items.length
       ? `${page.items.length} of ${scanned} scanned products for "${query}":\n\n${formatProductSearchResults(page.items)}`
       : `No products found for "${query}".`;
     return response({ observedAt: this.observedAt(), catalogView: await this.catalogView(), products: page.items, scanned, returned: page.items.length, favoritesLoaded: favorites.length,
-      completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor },
+      completeness: page.completeness, failures: page.failures, nextCursor: page.nextCursor, unknownToFilter },
     text + (partial ? `\n\nPartial results: ${page.failures.length} problem(s) reading results; see failures.` : '') +
+      (unknownToFilter ? `\n\n${unknownToFilter} more product(s) were left out because the results page gave no category or brand for them; search without the filter to see them.` : '') +
       (page.nextCursor ? `\n\nMore results are available. Pass cursor "${page.nextCursor}" with the same query to continue.` : ''),
     partial ? 'partial' : page.items.length ? 'success' : 'empty');
   }

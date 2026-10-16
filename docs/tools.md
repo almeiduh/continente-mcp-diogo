@@ -95,8 +95,9 @@ Filters narrow a search to what is asked for. `category` keeps products whose ca
 contains the text (`Congelados/Frutas e Legumes`, `Mercearia`), `excludeCategory` leaves out
 those that do (`Animais`, so "tofu" does not return cat litter), and `brand` keeps products whose
 brand contains it (`Continente`). Case and accents are ignored. A product whose category or brand
-is unknown is left out by `category` and `brand`, and kept by `excludeCategory`. Filtered searches
-read further pages, up to five, to fill `limit`.
+is unknown is left out by `category` and `brand`, and kept by `excludeCategory`; `unknownToFilter`
+counts the products left out only for that reason, so a search without the filter can show them.
+Filtered searches read further pages, up to five, to fill `limit`.
 
 `sort: "unit_price"` orders the returned products cheapest first by price per drained kg when
 there is one, otherwise per kg, then per litre; products without such a price come last in
@@ -131,7 +132,7 @@ unknown price when only the price is unreadable, and described in `failures`; th
 then `partial`.
 
 `data`: `observedAt`, `catalogView`, `products`, `scanned`, `returned`, `favoritesLoaded`,
-`completeness`, `failures`, `nextCursor`.
+`completeness`, `failures`, `nextCursor`, `unknownToFilter`.
 
 `catalogView` says whose view of the catalogue the result is, from the server's last sign-in
 check: `signed_in`, `signed_out` (also when there is no saved session at all) or `unknown`.
