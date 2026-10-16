@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-16
+
 ### Added
 
 - `choose_products` lets the user pick between candidate products for the choices an assistant should not make alone. All open choices of a request go into one call (at most 10, 2 to 4 candidates each, with a suggestion). Clients that support MCP Apps, such as Claude and ChatGPT desktop, show a picker with photos, pack, price per kg or litre and availability, in the client's own colours and fonts and usable with the keyboard, and send all the choices back as one chat message, after which it folds into a short list of what was chosen; other clients get a numbered text list. It changes nothing.
@@ -151,7 +153,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/andredelgado/continente-mcp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/andredelgado/continente-mcp/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/andredelgado/continente-mcp/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...v0.7.0
