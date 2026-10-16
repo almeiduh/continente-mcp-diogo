@@ -2,8 +2,8 @@ import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
-import type { BasketPreview, PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
-import { failure } from '../domain/index.js';
+import type { BasketPreview, PriceTag, ProductId, ProductLabel, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
+import { failure, parseProductReference } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
 import type { CatalogService, FavoritesService, FavoritesSnapshot, SearchOptions, SearchResult } from '../services/catalog.js';
@@ -93,6 +93,28 @@ function formatProduct(product: ProductDetails): string {
     product.saleRules.status === 'available' ? `Sale rules: ${formatSaleRules(product.saleRules.rules)}`
       : `Sale rules unavailable: ${product.saleRules.error.message}`, `URL: ${product.url}`].join('\n');
 }
+const NUTRIENT_ORDER = ['energy_kcal', 'fat', 'saturated_fat', 'carbohydrates', 'sugars', 'fibre', 'protein', 'salt'] as const;
+const NUTRIENT_NAMES: Record<(typeof NUTRIENT_ORDER)[number], string> = { energy_kcal: 'energy', fat: 'fat', saturated_fat: 'of which saturates',
+  carbohydrates: 'carbohydrates', sugars: 'of which sugars', fibre: 'fibre', protein: 'protein', salt: 'salt' };
+function formatNutrition(nutrition: NonNullable<ProductLabel['nutrition']>): string {
+  const main = NUTRIENT_ORDER.flatMap(key => nutrition.nutrients.filter(item => item.key === key).slice(0, 1).map(item => `${NUTRIENT_NAMES[key]} ${item.amount} ${item.unit}`));
+  const others = nutrition.nutrients.filter(item => item.key === null).length;
+  return `Nutrition per ${nutrition.per ? amount(nutrition.per) : 'unstated amount'}: ${main.join(', ')}${others ? ` (and ${others} more in the structured result)` : ''}`;
+}
+function formatLabels(labels: { productId: string | null; name: string | null; label: ProductLabel | null; error: ToolError | null }[]): string {
+  const list = numbered(labels.map(item => {
+    const head = `${item.name ?? 'Unknown product'} [${item.productId ?? 'invalid reference'}]`;
+    if (item.error) return `${head} — could not be read: ${item.error.message}`;
+    const label = item.label;
+    if (!label || (!label.ingredients && !label.allergenStatement && !label.nutrition)) return `${head} — the website shows no ingredients, allergens or nutrition`;
+    return [head, ...(label.ingredients ? [`Ingredients: ${label.ingredients}`] : []),
+      ...(label.emphasised?.length ? [`In capitals in the ingredients: ${label.emphasised.join(', ')}`] : []),
+      ...(label.allergenStatement ? [`Allergen statement: ${label.allergenStatement}`] : []),
+      ...(label.mayContain && label.mayContain !== label.allergenStatement ? [`May contain: ${label.mayContain}`] : []),
+      ...(label.nutrition ? [formatNutrition(label.nutrition)] : [])].join('\n   ');
+  }));
+  return `Product labels, from the website's copy (the packaging prevails; nothing here is inferred):\n\n${list}`;
+}
 function formatPreview(preview: BasketPreview): string {
   const list = numbered(preview.lines.map(line => {
     const head = `${line.name ?? 'Unknown product'} [${line.productId}]`;
@@ -172,6 +194,18 @@ export class ShoppingHandlers {
     const product = result.value;
     const partial = product.saleRules.status === 'unavailable' || product.price === null || product.availability === 'unknown';
     return response({ ...product, observedAt: this.observedAt(), catalogView: await this.catalogView() }, formatProduct(product), partial ? 'partial' : 'success');
+  }
+
+  async getProductLabels(references: string[]): Promise<CallToolResult> {
+    const labels: { productId: ProductId | null; name: string | null; label: ProductLabel | null; error: ToolError | null }[] = [];
+    for (const reference of references) {
+      const parsed = parseProductReference(reference);
+      if (!parsed.ok) { labels.push({ productId: null, name: null, label: null, error: parsed.error }); continue; }
+      const { productId } = parsed.value;
+      const result = await this.services.catalog.getProductLabel(productId);
+      labels.push(result.ok ? { productId, name: result.value.name, label: result.value.label, error: null } : { productId, name: null, label: null, error: result.error });
+    }
+    return response({ observedAt: this.observedAt(), labels }, formatLabels(labels));
   }
 
   async listFavorites(refresh: boolean): Promise<CallToolResult> {
@@ -306,6 +340,12 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'Availability is what the product page shows this session, signed in or not; it is not a delivery-slot stock check. ' +
       'Check this before choosing a quantity for weighted or bulk products. No login needed.',
       contracts.GetProductInput, contracts.ProductDetailsOutput, READ, args => handlers.getProduct(args.productId)),
+    tool('get_product_labels', 'Get product labels',
+      'Ingredients, allergens and nutrition for up to 20 products, as the website\'s copy of each label declares them: the ingredient list, ' +
+      'the words it prints in capitals (how labels mark allergens), the allergen and "may contain traces" statements, and nutrients per 100 g or ml. ' +
+      'Use it only when a task needs them, such as checking vegan, gluten or allergens, or adding up protein. Nothing is inferred: absence of an ' +
+      'allergen in these fields is not a "free from" claim, and the packaging prevails. No login needed.',
+      contracts.GetProductLabelsInput, contracts.LabelsOutput, READ, args => handlers.getProductLabels(args.productIds)),
     tool('list_favorites', 'List favorites',
       'List the products saved as favorites on the account. Uses a local snapshot that is refreshed automatically when missing; ' +
       'snapshots older than 24 hours are marked stale. Pass refresh: true to fetch the current list from the website.',

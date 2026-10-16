@@ -15,6 +15,8 @@ export interface SessionService {
 }
 export interface CatalogGateway {
   fetchProductDetails?(reference: string): Promise<Result<{ html: string; url: string }, ToolError>>;
+  /** The label tab a product page links to (ingredients, allergens, nutrition). */
+  fetchProductLabel?(url: string): Promise<Result<string, ToolError>>;
   searchProducts(query: string, limit: number, resume?: SearchResume): Promise<Result<RetrievedPages, ToolError>>;
 }
 export interface RetrievedPages {

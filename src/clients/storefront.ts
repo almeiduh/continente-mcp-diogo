@@ -69,6 +69,11 @@ export class CatalogClient implements CatalogGateway {
     if (!page.ok) return page;
     return page.value.ready ? success({ html: page.value.html, url: page.value.url }) : failure('invalid_data', 'Product detail content is unavailable');
   }
+  async fetchProductLabel(url: string): Promise<Result<string, ToolError>> {
+    const href = storefrontUrl(url);
+    if (!href || !new URL(href).pathname.endsWith('/Product-ProductNutritionalInfoTab')) return failure('invalid_input', 'Invalid product label URL');
+    return readContinuation(this.site, href);
+  }
   /**
    * Read result pages until `limit` products are collected, at most five pages. `resume` continues
    * at a position of the full list: from the results grid when its URL is known, otherwise from

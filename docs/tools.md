@@ -1,6 +1,6 @@
 # Tool reference
 
-Continente MCP exposes 12 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 13 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
@@ -8,6 +8,7 @@ behaviour annotations.
 | --- | --- | --- | --- |
 | `search_products` | No | No | `query`, `limit` (1–50, default 10), `cursor?`, `favoritesFirst` (default `false`) |
 | `get_product` | No | No | `productId` |
+| `get_product_labels` | No | No | `productIds` (1–20) |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
 | `get_cart` | Yes | No | — |
 | `preview_basket` | Yes | No | `items` (1–30 of `productId`, `quantity` ≥ 0, `cartItemId?`) |
@@ -146,6 +147,35 @@ website can show a different availability than in the public catalogue, so the s
 read `available` signed out and `unavailable` in your account. A product page the website does
 not show to this session returns `not_found`: the product may not be sold in your area, or no
 longer be sold. Signed in and signed out can differ here too.
+
+### `get_product_labels`
+
+Ingredients, allergens and nutrition for up to 20 products, as the website's copy of each label
+declares them. Call it only when a task needs them, such as checking that a product is vegan or
+free of an allergen, or adding up protein; `get_product` stays fast without it.
+
+`data`: `observedAt` and `labels`, one per product with `productId`, `name`, `label` and `error`.
+`label` is `null` when the website shows no label information, as for most fresh produce.
+Otherwise:
+
+| Field | Meaning |
+| --- | --- |
+| `regulatedName` | The product's legal name |
+| `ingredients` | The ingredient list, verbatim |
+| `emphasised` | Words printed in capitals in the ingredients, such as `SOJA` or `TRIGO`, which is how labels mark allergens |
+| `allergenStatement` | The label's own statement, such as `Contém Leite.` |
+| `mayContain` | The "may contain traces of" sentence, from the statement or the ingredients |
+| `storage` | Storage instructions |
+| `nutrition` | `per` (such as 100 g or 100 ml) and `nutrients`, each with `name`, `key`, `amount` and `unit` |
+
+`key` is one of `energy_kj`, `energy_kcal`, `fat`, `saturated_fat`, `carbohydrates`, `sugars`,
+`fibre`, `protein` and `salt`, or `null` for others such as vitamins.
+
+Nothing is inferred. Not every label capitalises its allergens (one biscuit lists
+`Farinha de trigo`), so read `ingredients` as well as `emphasised`, and an allergen missing from
+these fields is not a "free from" claim. The website's copy can lag behind the packaging, which
+prevails. Reading a label costs one small request once `get_product` has read the product,
+otherwise also the product page.
 
 ## Favorites
 

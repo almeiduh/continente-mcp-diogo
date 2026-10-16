@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
+import { MAX_REFERENCE_LENGTH, isProductReference, BasketPreviewSchema, CartSchema, ProductLabelSchema, ProductIdSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
   ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
@@ -99,5 +99,14 @@ export const FrequencyOutput = outputSchema(FrequencyData, { scan: FrequencyData
 export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ favorites: FavoritesStatusSchema, update: UpdateStatusSchema }));
 
 export const GetProductInput = z.strictObject({ productId: ProductReferenceInput });
+export const GetProductLabelsInput = z.strictObject({
+  productIds: z.array(ProductReferenceInput).min(1).max(20).describe('Products to read the label of, at most 20.'),
+});
+export const LabelsData = z.strictObject({ ...observed, labels: z.array(z.strictObject({
+  productId: ProductIdSchema.nullable(), name: z.string().nullable(),
+  /** Null when the website has no label information for the product, or when it could not be read (see error). */
+  label: ProductLabelSchema.nullable(), error: ToolErrorSchema.nullable(),
+})) });
+export const LabelsOutput = outputSchema(LabelsData);
 export const ProductDetailsData = ProductDetailsSchema.safeExtend({ ...observed, ...viewed });
 export const ProductDetailsOutput = outputSchema(ProductDetailsData);

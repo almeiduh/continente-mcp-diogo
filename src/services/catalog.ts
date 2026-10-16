@@ -1,9 +1,10 @@
 import { requestIO, RequestStopped } from '../session/request.js';
 import { z } from 'zod';
 import type { Clock, FavoritesGateway, FavoritesStore, CatalogGateway, Logger, SearchResume } from '../ports.js';
-import type { FavoritesCache, FavoritesStatus, PageResult, Product, Result, ToolError } from '../domain/index.js';
+import type { FavoritesCache, FavoritesStatus, PageResult, Product, ProductId, ProductLabel, Result, ToolError } from '../domain/index.js';
 import { parseProductReference } from '../domain/index.js';
 import { parseProductDetails } from '../parsers/product.js';
+import { isProductLabelUrl, parseProductLabel, productLabelUrl } from '../parsers/label.js';
 import { success, failure } from '../domain/index.js';
 import { parseFavoritesPages, parseProductSearchPage, rankProductsByFavorites, storefrontUrl } from '../parsers/catalog.js';
 import type { RankedProduct } from '../parsers/catalog.js';
@@ -88,12 +89,40 @@ export function decodeSearchCursor(cursor: string, query: string): Result<Search
 }
 export class CatalogService {
   constructor(private readonly client: CatalogGateway, private readonly favorites: FavoritesService) {}
+  /** Label URLs seen on product pages, so a label can be read without loading the page again. */
+  private readonly labels = new Map<ProductId, { url: string | null; name: string }>();
   async getProduct(reference: string) {
     const parsed = parseProductReference(reference);
     if (!parsed.ok) return failure('invalid_input', 'Invalid product reference');
     if (!this.client.fetchProductDetails) return failure('upstream_unavailable', 'Product inspection is unavailable');
     const response = await requestIO(() => this.client.fetchProductDetails!(reference));
-    return response.ok ? parseProductDetails(response.value.html, response.value.url, parsed.value.productId) : response;
+    if (!response.ok) return response;
+    const details = parseProductDetails(response.value.html, response.value.url, parsed.value.productId);
+    if (details.ok) this.rememberLabel(details.value.productId, productLabelUrl(response.value.html, details.value.productId), details.value.name);
+    return details;
+  }
+  private rememberLabel(productId: ProductId, url: string | null, name: string) {
+    this.labels.delete(productId); this.labels.set(productId, { url, name });
+    if (this.labels.size > 500) this.labels.delete(this.labels.keys().next().value!);
+  }
+  /**
+   * The website's copy of a product's label. Its URL carries the product's EAN, which only the
+   * product page shows, so the page is read first unless an earlier call already did. `label` is
+   * null when the website has no label information for the product.
+   */
+  async getProductLabel(reference: string): Promise<Result<{ productId: ProductId; name: string; label: ProductLabel | null }, ToolError>> {
+    const parsed = parseProductReference(reference);
+    if (!parsed.ok) return failure('invalid_input', 'Invalid product reference');
+    const { productId } = parsed.value;
+    if (!this.labels.has(productId)) { const product = await this.getProduct(productId); if (!product.ok) return product; }
+    const known = this.labels.get(productId);
+    if (!known) return failure('upstream_unavailable', 'The product page could not be read');
+    if (!known.url) return success({ productId, name: known.name, label: null });
+    if (!this.client.fetchProductLabel || !isProductLabelUrl(known.url, productId)) return failure('upstream_unavailable', 'Product labels are unavailable');
+    const html = await requestIO(() => this.client.fetchProductLabel!(known.url!));
+    if (!html.ok) return html;
+    const label = parseProductLabel(html.value);
+    return label.ok ? success({ productId, name: known.name, label: label.value }) : label;
   }
   /**
    * Products in the website's relevance order, `limit` at a time. `nextCursor` continues right

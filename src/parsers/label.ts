@@ -1,0 +1,76 @@
+import { load } from 'cheerio';
+import type { CheerioAPI } from 'cheerio';
+import { ProductLabelSchema, failure, success } from '../domain/index.js';
+import type { ProductLabel, Result, ToolError } from '../domain/index.js';
+import { storefrontUrl } from './catalog.js';
+
+const LABEL_PATH = '/Product-ProductNutritionalInfoTab';
+const text = (value: string) => value.replace(/\s+/g, ' ').trim();
+/** The label request a product page links to; it needs the product's EAN, which only that page shows. */
+export function productLabelUrl(html: string, productId: string): string | null {
+  const urls = [...new Set(load(html)('a.js-nutritional-tab-anchor[data-url]').map((_, node) => load(node)('a').attr('data-url') ?? '').get())]
+    .map(value => storefrontUrl(value)).filter((value): value is string => value !== null);
+  const valid = urls.filter(value => { const url = new URL(value); return url.pathname.endsWith(LABEL_PATH) && url.searchParams.get('pid') === productId; });
+  return valid.length === 1 ? valid[0]! : null;
+}
+export function isProductLabelUrl(value: string, productId: string): boolean {
+  const href = storefrontUrl(value);
+  if (!href) return false;
+  const url = new URL(href);
+  return url.pathname.endsWith(LABEL_PATH) && url.searchParams.get('pid') === productId;
+}
+
+/** The value paragraph that follows a field's caption, such as the ingredients after "Declaração de Ingredientes:". */
+function field($: CheerioAPI, selector: string): string | null {
+  const block = $(selector).first();
+  if (!block.length) return null;
+  const parts = block.children('p, span').toArray().map(node => text($(node).text()));
+  const value = parts.length > 1 ? parts.slice(1).join(' ') : '';
+  return value && value !== '.' ? value : null;
+}
+const UNITS: Record<string, string> = { KJO: 'kJ', E14: 'kcal', GRM: 'g', MGM: 'mg', MC: 'µg', MLT: 'ml' };
+const UNIT_NAMES: Record<string, string> = { grama: 'g', miligrama: 'mg', micrograma: 'µg', quilojoule: 'kJ', quilocaloria: 'kcal', mililitro: 'ml' };
+/** "(GRM) Grama" or "Grama" to g; anything else is kept as printed. */
+function unit(label: string): string {
+  const code = /^\((\w+)\)/.exec(label)?.[1];
+  return (code && UNITS[code]) ?? UNIT_NAMES[label.replace(/^\(\w+\)\s*/, '').toLowerCase()] ?? label;
+}
+const KEYS: Record<string, NonNullable<ProductLabel['nutrition']>['nutrients'][number]['key']> = {
+  'lípidos': 'fat', 'lípidos > saturados': 'saturated_fat', 'hidratos de carbono': 'carbohydrates',
+  'hidratos de carbono > açúcares': 'sugars', 'fibra': 'fibre', 'proteínas': 'protein', 'sal': 'salt',
+};
+function nutrition($: CheerioAPI): ProductLabel['nutrition'] {
+  const rows = $('.nutrients-table .nutrients-row').toArray().map(row => $(row).find('.nutriInfo-details').toArray().map(cell => text($(cell).text())))
+    .filter(cells => cells.length === 3);
+  const nutrients = rows.flatMap(([name = '', raw = '', printed = '']) => {
+    const amount = /^\d+(?:,\d+)?$/.test(raw) ? Number(raw.replace(',', '.')) : null;
+    if (!name || amount === null) return [];
+    const normalised = unit(printed);
+    const key = name.toLowerCase() === 'energia' ? (normalised === 'kJ' ? 'energy_kj' : normalised === 'kcal' ? 'energy_kcal' : null) : KEYS[name.toLowerCase()] ?? null;
+    return [{ name, key, amount, unit: normalised }];
+  });
+  if (!nutrients.length) return null;
+  const size = field($, '.serving-size'); const sizeUnit = field($, '.serving-size--uom');
+  const perUnit = sizeUnit ? unit(sizeUnit) : null;
+  const per = size && /^\d+(?:,\d+)?$/.test(size) && (perUnit === 'g' || perUnit === 'ml') ? { value: Number(size.replace(',', '.')), unit: perUnit as 'g' | 'ml' } : null;
+  return { per, nutrients };
+}
+/** Capitalised words in the ingredients: SOJA, TRIGO, LEITE. Meaningless when everything is in capitals. */
+function emphasised(ingredients: string | null): string[] | null {
+  if (!ingredients || !/\p{Ll}/u.test(ingredients)) return null;
+  return [...new Set(ingredients.match(/\p{Lu}{2,}(?:[ -]\p{Lu}{2,})*/gu) ?? [])].filter(word => !/^(?:E|B|BC)$/.test(word));
+}
+const mayContain = (...sources: (string | null)[]) => sources.flatMap(source => source?.match(/[^.]*\b(?:pode conter|vest[ií]gios)[^.]*\.?/i) ?? []).map(text)[0] ?? null;
+
+/** Parse the label tab. A page without any label field is reported as missing rather than as an empty label. */
+export function parseProductLabel(html: string): Result<ProductLabel | null, ToolError> {
+  const $ = load(html);
+  if (!$('.ct-pdp--description-content, .tab-row-details').length) return failure('invalid_data', 'The product label was not recognised');
+  const ingredients = field($, '.ingredients');
+  const allergenStatement = field($, '.allergen-statement');
+  const label = { regulatedName: field($, '.regulated-product-name'), ingredients, emphasised: emphasised(ingredients), allergenStatement,
+    mayContain: mayContain(allergenStatement, ingredients), storage: field($, '.storage-instruction'), nutrition: nutrition($) };
+  if (!label.ingredients && !label.allergenStatement && !label.nutrition && !label.regulatedName) return success(null);
+  const parsed = ProductLabelSchema.safeParse(label);
+  return parsed.success ? success(parsed.data) : failure('invalid_data', 'The product label was not recognised');
+}

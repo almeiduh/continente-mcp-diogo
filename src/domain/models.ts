@@ -139,6 +139,39 @@ export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
 });
 export type ProductDetails = z.infer<typeof ProductDetailsSchema>;
 
+/** One nutrient as the label gives it, per `nutrition.per`. */
+export const NutrientSchema = z.strictObject({
+  /** The label's name, such as `proteínas` or `lípidos > saturados`. */
+  name: z.string().min(1),
+  /** A stable key for the common nutrients; null for the others, such as vitamins. */
+  key: z.enum(['energy_kj', 'energy_kcal', 'fat', 'saturated_fat', 'carbohydrates', 'sugars', 'fibre', 'protein', 'salt']).nullable(),
+  amount: z.number().finite().nonnegative(),
+  /** `kJ`, `kcal`, `g`, `mg` or `µg`, or the label's own text for anything else. */
+  unit: z.string().min(1),
+});
+/** What the website's copy of a product label declares. Nothing is inferred; the packaging prevails. */
+export const ProductLabelSchema = z.strictObject({
+  regulatedName: z.string().nullable(),
+  ingredients: z.string().nullable(),
+  /**
+   * Words printed in capitals in the ingredients, which is how labels mark allergens, such as
+   * `SOJA` or `TRIGO`. Not every label does this, so read `ingredients` too. Null when the
+   * ingredients are missing or entirely in capitals.
+   */
+  emphasised: z.array(z.string()).nullable(),
+  /** The label's own allergen statement, such as `Contém Leite.` */
+  allergenStatement: z.string().nullable(),
+  /** The label's "may contain traces of" sentence, from the allergen statement or the ingredients. */
+  mayContain: z.string().nullable(),
+  storage: z.string().nullable(),
+  nutrition: z.strictObject({
+    /** The amount the values are for, such as 100 g or 100 ml; null when the label does not say. */
+    per: QuantitySchema.nullable(),
+    nutrients: z.array(NutrientSchema),
+  }).nullable(),
+});
+export type ProductLabel = z.infer<typeof ProductLabelSchema>;
+
 /** One requested line of a basket preview: what the cart holds, what would change and what it would cost. */
 export const BasketPreviewLineSchema = z.strictObject({
   productId: ProductIdSchema,
