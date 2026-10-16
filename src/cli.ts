@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { createShoppingApplication } from './runtime.js';
 import { runAutoLogin } from './auto-login.js';
 import { isMainModule } from './main-module.js';

@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
 import type { ToolHandler } from './server.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
 import type { BasketPreview, PriceTag, ProductId, ProductLabel, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
@@ -293,7 +293,7 @@ export class ShoppingHandlers {
     const scan = result.value;
     if (!scan.succeeded && (scan.failed || scan.unscanned)) {
       const unavailable = errorResult(failure('order_details_unavailable', 'No order details could be read. See scan.failures.').error);
-      return { ...unavailable, structuredContent: { ...unavailable.structuredContent, scan } };
+      return { ...unavailable, structuredContent: { ...(unavailable.structuredContent as Record<string, unknown>), scan } };
     }
     const products = scan.products.slice(0, limit);
     const list = numbered(products.map(item => `${item.name}${item.productId ? ` [${item.productId}]` : ''} — ` +

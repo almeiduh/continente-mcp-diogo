@@ -1,7 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { CallToolRequestSchema, CallToolResultSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import type { CallToolResult, GetPromptResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { McpServer, ProtocolError, ProtocolErrorCode, isCallToolResult } from '@modelcontextprotocol/server';
+import type { CallToolResult, GetPromptResult, ToolAnnotations, Transport } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { ExecutionErrorSchema } from './contracts.js';
 import { checkRequest, inRequest, RequestScope, RequestStopped } from '../session/request.js';
@@ -31,6 +29,8 @@ export interface McpServerOptions {
   readonly closeResources?: () => Promise<void>;
   readonly requestTimeoutMs?: number;
 }
+/** The `result` envelope every tool returns in its structured content. */
+const structuredResult = (result: CallToolResult) => (result.structuredContent as { result?: { status?: string } } | undefined)?.result;
 export class ContinenteMcpServer {
   private readonly server: McpServer;
   private readonly handlers = new Map<string, ToolHandler>();
@@ -57,7 +57,7 @@ export class ContinenteMcpServer {
     }
   }
   private registerTools(): void {
-    if (!this.handlers.size) this.server.server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [] }));
+    if (!this.handlers.size) this.server.server.setRequestHandler('tools/list', async () => ({ tools: [] }));
     for (const handler of this.handlers.values()) {
       const { name, ...metadata } = handler.definition;
       this.server.registerTool(name, { ...metadata, inputSchema: handler.inputSchema,
@@ -65,15 +65,14 @@ export class ContinenteMcpServer {
       input => this.dispatchToolCall(name, input));
     }
     // Replace the SDK's tools/call handler: it turns argument errors into text-only tool results
-    // and skips output validation for errors. Matching on the method alone lets malformed params
-    // surface as InvalidParams instead of InternalError.
-    this.server.server.setRequestHandler(z.looseObject({ method: z.literal('tools/call') }), (raw, extra) => {
-      const request = CallToolRequestSchema.parse(raw);
-      if (request.params.task) throw new McpError(ErrorCode.InvalidParams, 'Task execution is not supported');
+    // and skips output validation for errors.
+    this.server.server.setRequestHandler('tools/call', (request, ctx) => {
+      // Task-augmented calls would run as ordinary calls here; refuse them, as no task support is advertised.
+      if ((request.params as { task?: unknown }).task !== undefined) throw new ProtocolError(ProtocolErrorCode.InvalidParams, 'Task execution is not supported');
       const progressToken = request.params._meta?.progressToken;
-      return this.dispatchToolCall(request.params.name, request.params.arguments ?? {}, { signal: extra.signal,
+      return this.dispatchToolCall(request.params.name, request.params.arguments ?? {}, { signal: ctx.mcpReq.signal,
         ...(progressToken === undefined ? {} : { onProgress: progress => {
-          void extra.sendNotification({ method: 'notifications/progress', params: { progressToken,
+          void ctx.mcpReq.notify({ method: 'notifications/progress', params: { progressToken,
             progress: progress.completed, ...(progress.total === undefined ? {} : { total: progress.total }), message: progress.message } }).catch(() => {});
         } }),
       });
@@ -87,26 +86,26 @@ export class ContinenteMcpServer {
   }
   private async execute(name: string, input: unknown, scope: RequestScope): Promise<CallToolResult> {
     const handler = this.handlers.get(name);
-    if (!handler) throw new McpError(ErrorCode.InvalidParams, `No tool named "${name}"`);
+    if (!handler) throw new ProtocolError(ProtocolErrorCode.InvalidParams, `No tool named "${name}"`);
     const parsed = handler.inputSchema.safeParse(input);
-    if (!parsed.success) throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for ${name}`, {
+    if (!parsed.success) throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Invalid arguments for ${name}`, {
       issues: parsed.error.issues.map(issue => ({ path: issue.path.map(String).join('.'), code: issue.code })),
     });
     let result: CallToolResult;
     try {
       checkRequest();
       result = await handler.execute(parsed.data);
-      if (scope.signal.aborted && (result.structuredContent?.result as { status?: string } | undefined)?.status !== 'partial') throw scope.signal.reason;
+      if (scope.signal.aborted && structuredResult(result)?.status !== 'partial') throw scope.signal.reason;
     } catch (error) {
       if (error instanceof RequestStopped) return this.executionError(error.code, handler.cartMutation === true,
         scope.writeAttempted ? 'unknown' : 'not_applied');
       return this.executionError('internal_error', handler.cartMutation === true);
     }
-    if (!CallToolResultSchema.safeParse(result).success) return this.executionError('invalid_result', handler.cartMutation === true);
+    if (!isCallToolResult(result)) return this.executionError('invalid_result', handler.cartMutation === true);
     if (handler.outputSchema) {
       const validated = handler.outputSchema.safeParse(result.structuredContent);
       if (!validated.success) return this.executionError('invalid_result', handler.cartMutation === true);
-      const failed = ExecutionErrorSchema.safeParse({ result: result.structuredContent?.result }).success;
+      const failed = ExecutionErrorSchema.safeParse({ result: structuredResult(result) }).success;
       if (failed !== (result.isError === true)) return this.executionError('invalid_result', handler.cartMutation === true);
     }
     return result;

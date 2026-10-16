@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The server runs on the MCP server package (`@modelcontextprotocol/server` 2.x) instead of the full SDK, which also installed an HTTP server stack this stdio server never used. Installing it now brings 26 packages instead of 113, and the Claude Desktop extension is about 1.6 MB smaller. Tools, prompts and protocol versions are unchanged; task-augmented tool calls are still refused before they run.
+
 ## [0.7.0] - 2026-10-16
 
 ### Fixed

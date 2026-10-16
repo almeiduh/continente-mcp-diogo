@@ -75,7 +75,7 @@ test('transport cleanup waits behind active shopping work', async () => {
 });
 
 test('discovery schemas describe strict inputs, defaults, outputs and operation annotations', async t => {
-  const { services } = injectedServices(); const { client } = await connect(t, services);
+  const { services, state } = injectedServices(); const { client } = await connect(t, services);
   const tools = (await client.listTools()).tools;
   const validator = new AjvJsonSchemaValidator();
   for (const tool of tools) {
@@ -105,7 +105,11 @@ test('discovery schemas describe strict inputs, defaults, outputs and operation 
     await assert.rejects(client.callTool({ name, arguments: args }), { code: -32602 });
   }
   await assert.rejects(client.request({ method: 'tools/call', params: { name: 'get_cart', arguments: [] } }, CallToolResultSchema), { code: -32602 });
-  await assert.rejects(client.request({ method: 'tools/call', params: { name: 'add_cart_item', arguments: { productId: ProductIdSchema.parse('00123') }, task: {} } }, CallToolResultSchema), /does not support task creation/);
+  // A task-augmented call is refused before it runs: it must not change the cart.
+  const writes = state.writes;
+  await assert.rejects(client.request({ method: 'tools/call', params: { name: 'add_cart_item', arguments: { productId: ProductIdSchema.parse('00123') }, task: {} } }, CallToolResultSchema),
+    (error: { code?: number; message?: string }) => error.code === -32602 || /does not support task creation/.test(error.message ?? ''));
+  assert.equal(state.writes, writes);
 });
 test('empty and partial results agree with text and retain data and failure counts', async t => {
   const { services } = injectedServices(); const { client } = await connect(t, services);
