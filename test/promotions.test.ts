@@ -112,3 +112,25 @@ test('search, product and cart text show promotions beside the price', async t =
   assert.match(cart, /× €0\.39, line €1\.00 \(€1\.17 before the discount\); offer: Leve 3 Por 1€ \(3 for €1\.00, applied in the cart\) until 2026-10-18/);
   assert.match(cart, /Azeite Continente — 1 un × €3\.29, line €3\.29; offer: Desconto Imediato: 13% \(was €3\.79\) until 2026-10-26/);
 });
+
+test('a family tile\'s badge is not given to the pack size it shows, and a product\'s own tile wins over its family tile', () => {
+  // Modelled on a live cat food family tile: it links to and prices the 4x85g pack, while its badge is the 12x85g pack's PVPR.
+  const tile = (id: string, variants: string, prices: string, badge: string) => `<div class="product-tile" data-variants-mapping='${variants}'><div class="ct-inner-tile-wrap">
+    <div class="ct-product-tile-badge ct-product-tile-badge--promotional"><img alt="${badge}"></div>
+    <a href="/produto/comida-humida-para-gato-${id}.html">Comida Húmida para Gato ${id}</a>
+    <div class="prices-wrapper">${prices}</div>
+    <div class="dual-badge-message dual-badge-unavailable-message dual-badge-unavailable-${id} d-none">Indisponível</div><button class="js-add-to-cart">Adicionar</button></div></div>`;
+  const family = '[{"id":"7519378","size":"12x85g"},{"id":"7519436","size":"4x85g"}]';
+  const html = `<main>${tile('7519436', family, '<div class="list "><span class="pvpr-info">Desde PVPR</span> 7,99€ </div><span class="pwc-tile--price-primary"> 2<span>,24€</span></span>', 'PVP Recomendado: 7,99€/un')}
+    ${tile('7684560', '[{"id":"7684560","size":"4x85g"},{"id":"7684622","size":"12x85g"}]', '<div class="list "><span class="pvpr-info">Desde PVPR</span> 22,79€ </div><span class="pwc-tile--price-primary"> 2<span>,24€</span></span>', '')}
+    ${tile('7684560', '[]', '<div class="list "><span class="pvpr-info">PVPR</span> 2,99€ </div><span class="pwc-tile--price-primary"> 2<span>,24€</span></span>', 'PVP Recomendado: 2,99€/un')}
+    ${tile('7090818', '[]', '<div class="list "><span class="strike-through"> 3,95€ </span></div><span class="pwc-tile--price-primary"> 4<span>,10€</span></span>', 'Desconto Imediato: 25%')}</main>`;
+  const page = valueOf(parseProductSearchPage(html));
+  assert.deepEqual(page.products.map(product => [product.productId, product.recommendedPrice?.amount.minorUnits ?? null, product.promotions.map(item => item.label)]), [
+    ['7519436', null, []],
+    ['7684560', 299, ['PVP Recomendado: 2,99€/un']],
+    // A discount whose struck-through price is not above the price is not this product's.
+    ['7090818', null, []],
+  ]);
+  assert.deepEqual(page.positions, [0, 1, 3]);
+});

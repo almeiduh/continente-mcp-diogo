@@ -38,18 +38,31 @@ export function recommendedPriceLabel(label: string): string {
 }
 /**
  * Promotions shown for a product: the promotional badge (a recommended price or an immediate
- * discount) and the multi-buy message. The dates on a product page are given once, so they are kept
- * only when there is a single promotion they can belong to.
+ * discount) and the multi-buy message. A badge is kept only when the product's own prices agree
+ * with it: a tile for a family of pack sizes can show one size's badge beside another's price. The
+ * dates on a product page are given once, so they are kept only when there is a single promotion
+ * they can belong to.
  */
 export function pagePromotions(shown: { badge: string; message: string; struck: string; recommended: PriceTag | null; price: PriceTag | null; validity?: string }): Promotion[] {
-  const found = [shown.badge, shown.message].map(parsePromotionLabel).filter((promotion): promotion is Promotion => promotion !== null);
-  for (const promotion of found) {
-    if (promotion.kind === 'recommended_price') promotion.previousPrice = shown.recommended;
-    if (promotion.kind === 'immediate_discount') promotion.previousPrice = previousPriceOf(shown.struck, shown.price);
-  }
+  const found = [shown.badge, shown.message].map(parsePromotionLabel).filter((promotion): promotion is Promotion => promotion !== null).filter(promotion => {
+    if (promotion.kind === 'recommended_price') {
+      const stated = parsePriceTag(/\d+(?:[.,]\d{1,2})?\s*€/.exec(promotion.label)?.[0] ?? '');
+      promotion.previousPrice = shown.recommended;
+      return stated.ok && stated.value !== null && shown.recommended?.amount.minorUnits === stated.value.amount.minorUnits;
+    }
+    if (promotion.kind === 'immediate_discount') {
+      promotion.previousPrice = previousPriceOf(shown.struck, shown.price);
+      return promotion.previousPrice !== null && shown.price !== null && promotion.previousPrice.amount.minorUnits > shown.price.amount.minorUnits;
+    }
+    return true;
+  });
   const dates = shown.validity ? parsePromotionDates(shown.validity) : null;
   if (dates && found.length === 1) Object.assign(found[0]!, dates);
   return found;
+}
+/** How many pack sizes a tile's data-variants-mapping lists; 0 when it lists none or is unreadable. */
+function variantCount(raw: string | undefined): number {
+  try { const parsed: unknown = raw ? JSON.parse(raw) : null; return Array.isArray(parsed) ? parsed.length : 0; } catch { return 0; }
 }
 /** A product photo on the website's own image service; anything else is not used. */
 export function productImageUrl(value: string | undefined | null): string | null {
@@ -88,7 +101,7 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
   if ($(SEARCH_EMPTY).length) return success({ products: [], positions: [], problems: [] });
   const tiles = $($('.search-results-grid').length ? '.search-results-grid .ct-inner-tile-wrap' : '.ct-inner-tile-wrap').toArray();
   if (!tiles.length) return failure('invalid_data', 'The search results page was not recognised');
-  const entries: { product: Product; position: number }[] = [];
+  const entries: { product: Product; position: number; family: boolean }[] = [];
   const problems: ToolError[] = [];
   const problem = (message: string) => problems.push(failure('invalid_data', message).error);
   tiles.forEach((tile, index) => {
@@ -122,12 +135,20 @@ export function parseProductSearchPage(html: string, start = 0): Result<SearchPa
       unitPrice: unitPriceOf(main.price, secondary.price, pack, drained),
       // A tile can also show badge images; the product photo comes from the catalogue's image folder.
       imageUrl: productImageUrl(card.find('img').toArray().map(img => $(img).attr('data-src') ?? $(img).attr('src') ?? '').find(src => /master-catalog/.test(src))) }, 'product');
-    if (product.ok) entries.push({ product: product.value, position: start + index });
+    // A tile for a family of pack sizes lists them in data-variants-mapping and shows "Desde" (from) prices.
+    const family = variantCount(card.closest('.product-tile').attr('data-variants-mapping')) > 1;
+    if (product.ok) entries.push({ product: product.value, position: start + index, family });
     else problem(`${position} (product ${reference.value.productId}) was not recognised and was skipped.`);
   });
   if (!entries.length && problems.length) return failure('invalid_data', 'No search result on the page could be recognised');
-  const seen = new Set<string>();
-  const unique = entries.filter(({ product }) => !seen.has(product.productId) && seen.add(product.productId));
+  // A product can appear twice: in a family tile and in its own tile. Its own tile has its own prices
+  // and promotions, so it replaces the family tile, which keeps its place in the list.
+  const unique: typeof entries = []; const at = new Map<string, number>();
+  for (const entry of entries) {
+    const index = at.get(entry.product.productId);
+    if (index === undefined) { at.set(entry.product.productId, unique.length); unique.push(entry); }
+    else if (unique[index]!.family && !entry.family) unique[index] = { ...entry, position: unique[index]!.position };
+  }
   return success({ products: unique.map(entry => entry.product), positions: unique.map(entry => entry.position), problems });
 }
 

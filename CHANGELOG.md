@@ -14,6 +14,10 @@ All notable changes to this project are documented here. The format follows
 
 - The order tools read a settled order's details only once while the server runs. An order dated 14 or more days ago no longer changes, so its product lines are kept in memory for the signed-in account and reused by `list_frequently_bought_products`, `list_orders` and `get_order`; a different sign-in clears them. Recent orders and the order list are always read from the website. For a weekly shopper, a repeated frequently-bought scan of 10 orders loads about 3 pages instead of 11.
 
+### Fixed
+
+- A product that appears twice in search results, inside a tile for a family of pack sizes and in its own tile, now takes its prices, `recommendedPrice` and promotions from its own tile. Family tiles show "Desde" (from) prices and can carry another pack size's badge, which could give the wrong PVPR; a badge is now kept only when the product's own prices agree with it.
+
 ## [0.9.0] - 2026-10-16
 
 ### Added
