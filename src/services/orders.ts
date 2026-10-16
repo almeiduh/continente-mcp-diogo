@@ -1,6 +1,6 @@
 import { checkRequest, requestIO, RequestStopped, reportProgress } from '../session/request.js';
-import type { OrdersGateway } from '../ports.js';
-import type { Order, PageResult, PurchaseFrequency, Result, ToolError } from '../domain/index.js';
+import type { Clock, OrdersGateway } from '../ports.js';
+import type { Order, OrderLine, PageResult, PurchaseFrequency, Result, ToolError } from '../domain/index.js';
 import { failure, success } from '../domain/index.js';
 import { OrderIdSchema } from '../domain/index.js';
 import { parseOrderHistory, parseOrderDetail, parseSingleOrder, aggregatePurchaseFrequency, orderHistoryUrl } from '../parsers/orders.js';
@@ -66,16 +66,54 @@ async function scanSummaries(client: OrdersGateway, limit: number, cursor?: stri
   return success({ entries, failures, nextCursor, hasMore, completeness: failures.length ? 'partial' : complete ? 'complete' : 'unknown' });
 }
 
+/** An order dated this long ago is settled (delivered or cancelled), so its lines no longer change. */
+export const SETTLED_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
+/**
+ * Product lines of settled orders, kept in memory for the account they were read with, so the order
+ * tools do not load the same detail pages again. Recent orders are always read from the website.
+ */
+export class SettledOrders {
+  private scope: string | null = null;
+  private readonly orders = new Map<string, { orderNumber: Order['orderNumber']; lines: OrderLine[]; single?: Order }>();
+  constructor(private readonly clock: Clock, private readonly currentScope: () => string, private readonly max = 200) {}
+  private entries() {
+    const scope = this.currentScope();
+    if (scope !== this.scope) { this.orders.clear(); this.scope = scope; }
+    return this.orders;
+  }
+  private settled(order: Order): boolean {
+    const date = order.date ? Date.parse(order.date) : NaN;
+    return Number.isFinite(date) && this.clock.now().getTime() - date >= SETTLED_AFTER_MS;
+  }
+  /** Lines for an order of the history list, when the same order (id and number) was read before. */
+  lines(order: Order): OrderLine[] | undefined {
+    const entry = order.orderId ? this.entries().get(order.orderId) : undefined;
+    return entry && entry.orderNumber === order.orderNumber ? structuredClone(entry.lines) : undefined;
+  }
+  single(orderId: string): Order | undefined { const entry = this.entries().get(orderId); return entry?.single && structuredClone(entry.single); }
+  remember(order: Order, single = false): void {
+    if (!order.orderId || order.lines.status !== 'available' || !this.settled(order)) return;
+    const orders = this.entries(); const previous = orders.get(order.orderId);
+    const entry = { orderNumber: order.orderNumber, lines: structuredClone(order.lines.items),
+      ...(single ? { single: structuredClone(order) } : previous?.orderNumber === order.orderNumber && previous.single ? { single: previous.single } : {}) };
+    orders.delete(order.orderId); orders.set(order.orderId, entry);
+    for (const oldest of orders.keys()) { if (orders.size <= this.max) break; orders.delete(oldest); }
+  }
+}
 export interface OrderListOptions { includeLines?: boolean; detailLimit?: number; cursor?: string; }
 export interface OrderListResult extends PageResult<Order> { hasMore: boolean | null; detailBudget: number; detailsRead: number; scanFailures: ScanFailure[]; }
 export class OrderService {
-  constructor(private readonly client: OrdersGateway) {}
+  constructor(private readonly client: OrdersGateway, private readonly settled?: SettledOrders) {}
   async getOrder(identifier: string): Promise<Result<Order, ToolError>> {
     const id = OrderIdSchema.safeParse(identifier);
     if (!id.success) return failure('invalid_input', 'Invalid orderId');
+    const known = this.settled?.single(id.data);
+    if (known) return success(known);
     const url = new URL('/conta/detalhe-encomenda/', STOREFRONT_ORIGIN); url.searchParams.set('orderID', id.data);
     const response = await requestIO(() => this.client.fetchOrderLines(url.href));
-    return response.ok ? parseSingleOrder(response.value, id.data) : response;
+    const order = response.ok ? parseSingleOrder(response.value, id.data) : response;
+    if (order.ok) this.settled?.remember(order.value, true);
+    return order;
   }
   async listOrders(limit: number, options: OrderListOptions = {}): Promise<Result<OrderListResult, ToolError>> {
     const budget = options.includeLines === false ? 0 : options.detailLimit ?? limit;
@@ -87,7 +125,9 @@ export class OrderService {
       let parsed;
       try {
         checkRequest();
-        if (!detailUrl) parsed = { ok: false as const, error: entry.error ?? failure('order_details_unavailable').error };
+        const known = this.settled?.lines(order);
+        if (known) parsed = success(known);
+        else if (!detailUrl) parsed = { ok: false as const, error: entry.error ?? failure('order_details_unavailable').error };
         else { const response = await requestIO(() => this.client.fetchOrderLines(detailUrl)); parsed = response.ok ? parseOrderDetail(response.value, order) : response; }
       } catch (error) {
         const stopped = failure(error instanceof RequestStopped ? error.code : 'upstream_unavailable').error;
@@ -100,7 +140,7 @@ export class OrderService {
         }
         parsed = { ok: false as const, error: stopped };
       }
-      if (parsed.ok) { order.lines = { status: 'available', items: parsed.value }; detailsRead++; }
+      if (parsed.ok) { order.lines = { status: 'available', items: parsed.value }; detailsRead++; this.settled?.remember(order); }
       else { order.lines = { status: 'unavailable', error: parsed.error }; scanFailures.push({ stage: 'detail', orderId: order.orderId, orderNumber: order.orderNumber, error: parsed.error }); }
       reportProgress(index + 1, Math.min(entries.length, budget), 'Reading order details');
     }
@@ -114,9 +154,9 @@ export interface FrequencyResult {
   unknownQuantityLines: number; failures: ScanFailure[]; completeness: 'complete' | 'partial' | 'unknown'; nextCursor: string | null;
 }
 export class PurchaseHistoryService {
-  constructor(private readonly client: OrdersGateway) {}
+  constructor(private readonly client: OrdersGateway, private readonly settled?: SettledOrders) {}
   async listFrequentlyBoughtProducts(limit: number): Promise<Result<FrequencyResult, ToolError>> {
-    const result = await new OrderService(this.client).listOrders(limit); if (!result.ok) return result;
+    const result = await new OrderService(this.client, this.settled).listOrders(limit); if (!result.ok) return result;
     const page = result.value;
     const known = page.items.flatMap(order => order.lines.status === 'available' ? [order.lines.items] : []);
     const unavailable = page.items.filter(order => order.lines.status === 'unavailable');

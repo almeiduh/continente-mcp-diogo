@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The order tools read a settled order's details only once while the server runs. An order dated 14 or more days ago no longer changes, so its product lines are kept in memory for the signed-in account and reused by `list_frequently_bought_products`, `list_orders` and `get_order`; a different sign-in clears them. Recent orders and the order list are always read from the website. For a weekly shopper, a repeated frequently-bought scan of 10 orders loads about 3 pages instead of 11.
+
 ## [0.9.0] - 2026-10-16
 
 ### Added

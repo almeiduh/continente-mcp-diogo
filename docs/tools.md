@@ -351,6 +351,11 @@ A failed change has `isError: true` and a `mutation` field:
 
 ## Orders
 
+An order dated 14 or more days ago is settled, so its product lines no longer change. While the
+server runs, these lines are kept in memory for the signed-in account, and the order tools read
+each settled order's detail page only once. A different sign-in clears them. The order history
+list and recent orders are always read from the website.
+
 ### `list_orders`
 
 Returns recent order summaries, newest first. `limit` counts summaries; `detailLimit`

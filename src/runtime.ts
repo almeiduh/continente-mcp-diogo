@@ -11,7 +11,7 @@ import { AuthenticationClient } from './clients/authentication.js';
 import { StorefrontClient, CatalogClient, FavoritesClient, CartClient, OrdersClient } from './clients/storefront.js';
 import { CatalogService, FavoritesService } from './services/catalog.js';
 import { CartService } from './services/cart.js';
-import { OrderService, PurchaseHistoryService } from './services/orders.js';
+import { OrderService, PurchaseHistoryService, SettledOrders } from './services/orders.js';
 import { productPicker, registerShoppingTools } from './mcp/shopping.js';
 import type { ShoppingServices } from './mcp/shopping.js';
 import { SERVER_INSTRUCTIONS, basketPlannerPrompt } from './mcp/guide.js';
@@ -48,9 +48,10 @@ export function createShoppingServices(options: RuntimeOptions = {}): ShoppingSe
   const site = new StorefrontClient(session);
   const favorites = new FavoritesService(options.favoritesClient ?? new FavoritesClient(site), store, clock, scope, logger);
   const ordersClient = options.ordersClient ?? new OrdersClient(site);
+  const settled = new SettledOrders(clock, scope);
   return { session, favorites, clock, catalog: new CatalogService(options.catalogClient ?? new CatalogClient(site), favorites),
-    cart: new CartService(options.cartClient ?? new CartClient(site)), orders: new OrderService(ordersClient),
-    history: new PurchaseHistoryService(ordersClient) };
+    cart: new CartService(options.cartClient ?? new CartClient(site)), orders: new OrderService(ordersClient, settled),
+    history: new PurchaseHistoryService(ordersClient, settled) };
 }
 export function createShoppingApplication(options: RuntimeOptions & { version: string; services?: ShoppingServices; update?: UpdateStatus }) {
   const services = options.services ?? createShoppingServices(options);
