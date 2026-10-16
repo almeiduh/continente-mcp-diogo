@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MAX_REFERENCE_LENGTH, isProductReference, CartSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
-  ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema } from '../domain/index.js';
+  ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema, CouponListSchema, CouponSelectionSchema, CheckoutSummarySchema, PickupStoresSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
   .refine(isProductReference, 'Expected a numeric productId or a product slug ending in it')
@@ -31,7 +31,7 @@ export const FrequentlyBoughtInput = z.strictObject({
 });
 
 export const PublicErrorSchema = ToolErrorSchema.extend({ code: z.union([ToolErrorSchema.shape.code, z.enum(['internal_error', 'invalid_result'])]) });
-const RecoverySchema = z.strictObject({ action: z.literal('get_cart'), automaticReplay: z.literal(false) });
+const RecoverySchema = z.strictObject({ action: z.enum(['get_cart', 'get_checkout_summary']), automaticReplay: z.literal(false) });
 export const ErrorResultSchema = z.strictObject({ status: z.literal('error'), error: PublicErrorSchema,
   mutation: z.discriminatedUnion('outcome', [
     z.strictObject({ outcome: z.literal('not_applied') }),
@@ -67,3 +67,15 @@ export const SessionStatusOutput = outputSchema(BrowserStatusSchema.extend({ fav
 
 export const GetProductInput = z.strictObject({ productId: ProductReferenceInput });
 export const ProductDetailsOutput = outputSchema(ProductDetailsSchema);
+export const CouponsOutput = outputSchema(CouponListSchema);
+export const SetCartCouponsInput = z.strictObject({ couponIds: z.array(z.string().trim().min(1).max(200)).max(100)
+  .describe('Coupon IDs returned by list_coupons. An empty array clears all selected coupons.') });
+export const CouponSelectionOutput = outputSchema(CouponSelectionSchema);
+export const CheckoutSummaryOutput = outputSchema(CheckoutSummarySchema);
+export const PickupStoresInput = z.strictObject({
+  postalCode: z.string().regex(/^\d{4}-\d{3}$/).describe('Postal code to search near, NNNN-NNN.'),
+  latitude: z.number().finite().min(-90).max(90).describe('Latitude for the public location search.'),
+  longitude: z.number().finite().min(-180).max(180).describe('Longitude for the public location search.'),
+  city: z.string().trim().max(150).optional().describe('City resolved for the postal code, if known.'),
+});
+export const PickupStoresOutput = outputSchema(PickupStoresSchema);

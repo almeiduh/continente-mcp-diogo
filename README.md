@@ -120,6 +120,10 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `get_product` | Price, availability and sale rules for one product |
 | `list_favorites` | Your saved favorites (`refresh: true` fetches the latest) |
 | `get_cart` | Cart lines, quantities, bags and totals |
+| `get_checkout_summary` | Provisional basket totals, immediate discounts and loyalty credit separately |
+| `list_coupons` | Displayed account coupons; eligibility and expiry stay unknown |
+| `set_cart_coupons` | Select coupons in the cart using IDs from `list_coupons` |
+| `list_pickup_stores` | Pickup store search using a postal code and public coordinates |
 | `add_cart_item` | Add an amount on top of what is in the cart |
 | `set_cart_item_quantity` | Make the cart hold exactly a quantity; zero removes |
 | `remove_cart_item` | Remove a line from the cart |
@@ -166,7 +170,7 @@ continentept-mcp --version
 - Login handles the standard email and password flow. If the website asks for extra
   verification, run `continentept-mcp login --show-browser` and complete it in the browser
   window.
-- There are no checkout, payment, delivery-slot or favorites-editing tools.
+- There are no fulfilment-selection, pickup-slot reservation, checkout or payment tools. Coupon selection changes cart context and is verified by reading the selected state back. Store lookup uses a verified read-only locator response and does not change the selected store.
 
 ## Documentation
 

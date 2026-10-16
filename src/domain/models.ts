@@ -51,6 +51,12 @@ export const CartTotalsSchema = z.strictObject({
   grandTotal: MoneySchema.nullable(),
 });
 export type CartTotals = z.infer<typeof CartTotalsSchema>;
+export const CheckoutSummarySchema = z.strictObject({
+  stage: z.literal('basket'), provisional: z.literal(true), totals: CartTotalsSchema,
+  immediateDiscounts: MoneySchema.nullable(), loyaltyCredit: MoneySchema.nullable(),
+  selectedCouponIds: z.array(z.string().trim().min(1).max(200)).nullable(),
+});
+export type CheckoutSummary = z.infer<typeof CheckoutSummarySchema>;
 export const CartSchema = z.strictObject({
   customerAuthenticated: z.boolean(),
   items: z.array(CartItemSchema),
@@ -108,3 +114,33 @@ export const ProductDetailsSchema = ProductReferenceSchema.safeExtend({
   ]),
 });
 export type ProductDetails = z.infer<typeof ProductDetailsSchema>;
+
+/** A coupon as displayed on the account's coupon page. Unknown retailer rules remain unknown. */
+export const CouponSchema = z.strictObject({
+  couponId: z.string().trim().min(1).max(200).nullable(),
+  description: z.string().trim().min(1).max(1000),
+  availability: z.string().trim().max(300).nullable(),
+  benefitValue: z.string().trim().max(100).nullable(),
+  benefitQualifier: z.string().trim().max(200).nullable(),
+  eligibility: z.literal('unknown'),
+  expiry: z.null(),
+});
+export type Coupon = z.infer<typeof CouponSchema>;
+export const CouponListSchema = z.strictObject({ coupons: z.array(CouponSchema), completeness: z.enum(['complete', 'partial', 'unknown']) });
+export type CouponList = z.infer<typeof CouponListSchema>;
+export const CouponSelectionSchema = z.strictObject({
+  outcome: z.enum(['confirmed', 'unknown']), selectedCouponIds: z.array(z.string().trim().min(1).max(200)),
+});
+export type CouponSelection = z.infer<typeof CouponSelectionSchema>;
+
+export const PickupStoreSchema = z.strictObject({
+  storeId: z.string().trim().min(1).max(100), name: z.string().trim().min(1).max(250),
+  address1: z.string().trim().max(250).nullable(), address2: z.string().trim().max(250).nullable(),
+  city: z.string().trim().max(150).nullable(), postalCode: z.string().trim().max(20).nullable(),
+  latitude: z.number().finite().nullable(), longitude: z.number().finite().nullable(),
+  countryCode: z.string().trim().max(10).nullable(), storeHours: z.unknown().nullable(),
+  isPickupStore: z.boolean(), isGalpStore: z.boolean().nullable(),
+});
+export type PickupStore = z.infer<typeof PickupStoreSchema>;
+export const PickupStoresSchema = z.strictObject({ stores: z.array(PickupStoreSchema), completeness: z.enum(['complete', 'partial', 'unknown']), selectedStoreChanged: z.literal(false) });
+export type PickupStores = z.infer<typeof PickupStoresSchema>;

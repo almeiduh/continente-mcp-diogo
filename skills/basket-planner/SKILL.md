@@ -16,13 +16,17 @@ Turn the user's shopping intent into a product list or a verified basket using t
 
 Searches read a bounded number of result pages; respect `completeness` and `failures` and do not claim a search was exhaustive.
 
+Before comparing basket savings, call `list_coupons`. Treat its description and benefit as displayed account data; eligibility and expiry remain unknown unless returned explicitly. When the user asks to apply a coupon, pass only returned IDs to `set_cart_coupons`; it submits current basket fields and confirms by reading the selected state back. If the result is unknown, read the basket before making another coupon change. Use `get_checkout_summary` to distinguish immediate discounts from loyalty credit; the basket-stage summary is provisional and the two amounts stay separate.
+
+`list_pickup_stores` searches by an explicit Portuguese postal code and public coordinates and reports pickup-capable locations. The caller supplies coordinates; the server does not use geocoding or browser geolocation. It does not change the selected store or list pickup slots. Do not claim availability, fees or inventory from a store listing.
+
 ## Change the basket
 
 - `set_cart_item_quantity({ productId, quantity, cartItemId? })` makes the basket hold exactly `quantity`, adding the product if needed. Zero removes it. Prefer this whenever the user states a desired total; repeating it is safe.
 - `add_cart_item({ productId, quantity, cartItemId? })` adds `quantity` on top of what is already there (default one sale unit). Use it only for "add more".
 - `remove_cart_item({ productId, cartItemId? })` removes a line. An already absent item is confirmed without a write.
 
-If the basket holds two units, "add two more" is `add_cart_item` with 2, while "I need two" is `set_cart_item_quantity` with 2 (which changes nothing). Process a list one item at a time and read each result before continuing. There is no batch, checkout or payment tool; checkout happens on the website.
+If the basket holds two units, "add two more" is `add_cart_item` with 2, while "I need two" is `set_cart_item_quantity` with 2 (which changes nothing). Process a list one item at a time and read each result before continuing. Coupon selection is a separate cart mutation. There is no fulfilment, pickup-slot reservation, checkout or payment tool; never open or navigate to a payment page.
 
 ## Read outcomes before reporting success
 
@@ -31,7 +35,7 @@ Read `structuredContent.result` rather than inferring success from prose.
 - `status: success`, `empty` or `partial` carries `data`. Report partial-result warnings and unavailable data.
 - A confirmed change has `data.outcome: "confirmed"` and `confirmedQuantity`, the quantity now in the basket. Report that observed quantity.
 - `status: error` carries `error`. For basket changes also read `mutation`: `not_applied` means nothing was submitted or the change was rejected; fix the reported cause before trying again.
-- `mutation.outcome: "unknown"` means the change may have happened. Stop dependent basket changes, call `get_cart`, and compare with the state before the change. Never repeat the original request just because the response was lost. If the basket state cannot settle the intent, explain the uncertainty and ask the user.
+- `mutation.outcome: "unknown"` means the change may have happened. For coupon selection, call `get_checkout_summary` to inspect selected coupon IDs; for other cart changes, call `get_cart`. Never repeat the original request just because the response was lost. If the basket state cannot settle the intent, explain the uncertainty and ask the user.
 
 A timeout, cancellation or lost connection during a change is not evidence that the basket stayed the same. Apply the same reconciliation when no structured result arrives.
 

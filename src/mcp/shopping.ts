@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
-import type { SessionService, MutationResult } from '../ports.js';
+import type { CouponGateway, CouponSelectionGateway, PickupStoreGateway, SessionService, MutationResult } from '../ports.js';
 import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure } from '../domain/index.js';
 import * as contracts from './contracts.js';
@@ -12,7 +12,7 @@ import type { OrderService, PurchaseHistoryService, OrderListOptions } from '../
 
 export interface ShoppingServices {
   catalog: CatalogService; favorites: FavoritesService; cart: CartService; orders: OrderService;
-  history: PurchaseHistoryService; session: SessionService;
+  history: PurchaseHistoryService; session: SessionService; coupons: CouponGateway; couponSelection: CouponSelectionGateway; pickupStores: PickupStoreGateway;
 }
 
 type Status = 'success' | 'empty' | 'partial';
@@ -158,6 +158,55 @@ export class ShoppingHandlers {
     return response(cart, `Cart (${cart.items.length} lines):\n\n${list}\n\n${summary}\nCheckout happens on the website: ${CHECKOUT_URL}`);
   }
 
+  async getCheckoutSummary(): Promise<CallToolResult> {
+    const context = await this.recover(() => this.services.couponSelection.fetchCheckoutContext());
+    if (!context.ok) return this.failed(context.error);
+    const cart = await this.recover(() => this.services.cart.getCart());
+    if (!cart.ok) return this.failed(cart.error);
+    const data = { stage: 'basket' as const, provisional: true as const, totals: cart.value.totals,
+      immediateDiscounts: cart.value.totals.discounts, loyaltyCredit: context.value.loyaltyCredit,
+      selectedCouponIds: context.value.selectedCouponIds };
+    const loyalty = data.loyaltyCredit ? `€${(data.loyaltyCredit.minorUnits / 100).toFixed(2)}` : 'unknown';
+    return response(data, `Basket summary (provisional): amount to pay ${euros(data.totals.grandTotal)}; reported order and shipping discounts ${euros(data.immediateDiscounts)}; loyalty credit earned ${loyalty}. Discounts embedded in line prices are not included in that discount field. This is not a final checkout quote.`,
+      data.loyaltyCredit === null || data.totals.grandTotal === null || data.selectedCouponIds === null ? 'partial' : 'success');
+  }
+
+  async listCoupons(): Promise<CallToolResult> {
+    const result = await this.recover(() => this.services.coupons.fetchCoupons());
+    if (!result.ok) return this.failed(result.error);
+    const coupons = result.value.coupons;
+    const list = numbered(coupons.map(item => `${item.description}` +
+      `${item.benefitValue ? ` — ${item.benefitValue}${item.benefitQualifier ? ` ${item.benefitQualifier}` : ''}` : ''}` +
+      `${item.availability ? `; ${item.availability}` : ''}` +
+      `${item.couponId ? `\n   couponId: ${item.couponId}` : '\n   couponId: unavailable'}`));
+    const completeness = result.value.completeness;
+    return response(result.value, (coupons.length ? `Coupons shown on the account page:\n\n${list}` : 'No account coupons are available.') +
+      '\nCart eligibility, expiry and stacking are unknown unless stated in the returned fields; selecting a coupon is not supported by this tool.',
+    completeness === 'partial' || completeness === 'unknown' ? 'partial' : coupons.length ? 'success' : 'empty');
+  }
+
+  async setCartCoupons(couponIds: string[]): Promise<CallToolResult> {
+    const result = await this.recover(() => this.services.couponSelection.setSelectedCoupons(couponIds));
+    if (!result.ok) return this.failed(result.error);
+    const confirmed = result.value.outcome === 'confirmed';
+    return response(result.value, confirmed
+      ? `The basket confirms ${result.value.selectedCouponIds.length} selected coupon(s).`
+      : `Coupon selection is uncertain. The last observed selected IDs are ${result.value.selectedCouponIds.length ? result.value.selectedCouponIds.join(', ') : 'none'}. Read the basket before making another coupon change; this request was not replayed.`,
+    confirmed ? 'success' : 'partial');
+  }
+
+  async listPickupStores(query: { postalCode: string; latitude: number; longitude: number; city?: string }): Promise<CallToolResult> {
+    const result = await this.services.pickupStores.fetchPickupStores(query);
+    if (!result.ok) return this.failed(result.error);
+    const data = result.value;
+    const list = numbered(data.stores.map(store => `${store.name}${store.city ? ` — ${store.city}` : ''}` +
+      `${store.address1 ? `\n   ${store.address1}` : ''}${store.address2 ? `, ${store.address2}` : ''}` +
+      `\n   storeId: ${store.storeId}`));
+    return response(data, (list ? `Pickup stores near ${query.postalCode}:\n\n${list}` : `No pickup stores were listed near ${query.postalCode}.`) +
+      '\nThis lookup did not change the selected store. Pickup-slot availability is not included.',
+    data.completeness === 'complete' ? data.stores.length ? 'success' : 'empty' : 'partial');
+  }
+
   private async mutation(result: MutationResult, operation: 'add' | 'set' | 'remove'): Promise<CallToolResult> {
     if (!result.ok) return this.failed(result.error, { outcome: 'not_applied' });
     const value = result.value;
@@ -240,8 +289,9 @@ const NO_UPDATE_INFO: UpdateStatus = { currentVersion: null, latestVersion: null
 export function registerShoppingTools(services: ShoppingServices, update: UpdateStatus = NO_UPDATE_INFO): ToolHandler[] {
   const handlers = new ShoppingHandlers(services, update);
   function tool<T>(name: string, title: string, description: string, inputSchema: z.ZodType<T>, outputSchema: z.ZodType,
-    annotations: ToolAnnotations, execute: (args: T) => Promise<CallToolResult>, cartMutation = false): ToolHandler {
-    return { definition: { name, title, description, annotations }, inputSchema, outputSchema, cartMutation,
+    annotations: ToolAnnotations, execute: (args: T) => Promise<CallToolResult>, cartMutation = false,
+    recoveryAction: 'get_cart' | 'get_checkout_summary' = 'get_cart'): ToolHandler {
+    return { definition: { name, title, description, annotations }, inputSchema, outputSchema, cartMutation, recoveryAction,
       execute: raw => services.session.run(() => execute(raw as T)) };
   }
   return [
@@ -263,6 +313,20 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       '(products, bags, deposit, delivery, discounts and grandTotal, the amount to pay). ' +
       'Use it to check current quantities before changing them and to verify any uncertain change.',
       contracts.EmptyInput, contracts.CartOutput, READ, () => handlers.getCart()),
+    tool('get_checkout_summary', 'Get basket summary',
+      'Read the basket-stage summary with current cart totals, reported order and shipping discounts, earned loyalty credit as a separate amount, and selected coupon IDs when rendered. The discount field excludes discounts embedded in line prices; the result is provisional and does not open delivery or payment.',
+      contracts.EmptyInput, contracts.CheckoutSummaryOutput, READ, () => handlers.getCheckoutSummary()),
+    tool('list_coupons', 'List coupons',
+      'Read coupon cards from the signed-in account page. Returns only fields displayed by the page; expiry and eligibility remain unknown when the site does not render them. This tool does not select or apply coupons.',
+      contracts.EmptyInput, contracts.CouponsOutput, READ, () => handlers.listCoupons()),
+    tool('set_cart_coupons', 'Select cart coupons',
+      'Set the selected coupon set using IDs from list_coupons. Selection is a cart change; only IDs are accepted, while all submission fields come from the current basket form. The tool reads back the basket to verify the result and never retries an uncertain write. If uncertain, use get_checkout_summary to inspect selected coupon state before another coupon change. It does not proceed to delivery or payment.',
+      contracts.SetCartCouponsInput, contracts.CouponSelectionOutput, UPDATE,
+      args => handlers.setCartCoupons(args.couponIds), true, 'get_checkout_summary'),
+    tool('list_pickup_stores', 'Find pickup stores',
+      'Search pickup-capable stores near an explicit postal code and public coordinates. This reads store rows only; it does not change selected-store context or inspect pickup slots.',
+      contracts.PickupStoresInput, contracts.PickupStoresOutput, READ,
+      args => handlers.listPickupStores({ postalCode: args.postalCode, latitude: args.latitude, longitude: args.longitude, ...(args.city ? { city: args.city } : {}) })),
     tool('add_cart_item', 'Add to cart',
       'Add an amount of a product to the cart, on top of any quantity already there. quantity is in the product sale unit (default 1). ' +
       `Use set_cart_item_quantity instead when the user wants a specific total. ${UNCERTAIN_WRITE}`,

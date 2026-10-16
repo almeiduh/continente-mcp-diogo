@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `list_coupons` returns displayed coupon card fields, including qualifiers, while eligibility and expiry remain unknown unless the page provides them.
+- `set_cart_coupons` applies only explicitly requested coupon IDs using fresh basket-form data and verifies the selected state without replaying uncertain writes.
+- `get_checkout_summary` separates immediate discounts from earned loyalty credit in a provisional basket-stage summary.
+- `list_pickup_stores` uses the observed geocoded GET contract and returns pickup-capable store rows without changing selected-store context.
+
+### Security
+
+- Require Chromium sandboxing for normal and login sessions, reject legacy or cross-account saved cookie files, and restrict cart writes to exact supported operations and methods.
+
 ## [0.6.1] - 2026-10-15
 
 ### Fixed

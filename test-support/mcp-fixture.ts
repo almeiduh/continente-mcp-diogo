@@ -8,6 +8,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createShoppingApplication, createShoppingServices } from '../src/runtime.js';
 import { createSerialTaskQueue } from '../src/session/queue.js';
 import { fixture, rawCart, productForm, cartControls, ordersPage, ok, pages } from './helpers.js';
+import { parseCouponsPage } from '../src/parsers/coupons.js';
+import { parsePickupStores } from '../src/parsers/stores.js';
 
 export function injectedServices() {
   const state = { reads: 0, closes: 0, refreshes: 0, writes: 0, quantity: 2, cache: null as FavoritesCache | null };
@@ -17,6 +19,10 @@ export function injectedServices() {
     favoritesStore: { async load() { return ok(state.cache); }, async save(value) { state.cache = value; return ok(); } },
     catalogClient: { async fetchProductDetails() { state.reads++; return ok({ html: fixture('product'), url: 'https://www.continente.pt/produto/leite-00123.html' }); }, async searchProducts() { state.reads++; return ok({ pages: [fixture('catalog')], failures: [] }); } },
     favoritesClient: { async fetchFavorites() { state.reads++; return ok(pages(fixture('favorites'))); } },
+    couponClient: { async fetchCoupons() { state.reads++; return parseCouponsPage(fixture('coupons')); } },
+    couponSelectionClient: { async setSelectedCoupons(couponIds: string[]) { state.writes++; return ok({ outcome: 'confirmed' as const, selectedCouponIds: couponIds }); },
+      async fetchCheckoutContext() { state.reads++; return ok({ loyaltyCredit: { currency: 'EUR' as const, minorUnits: 40 }, selectedCouponIds: ['synthetic-coupon-001'] }); } },
+    pickupStoreClient: { async fetchPickupStores() { state.reads++; return parsePickupStores(fixture('stores')); } },
     ordersClient: { async fetchOrderHistory() { state.reads++; return ok(ordersPage); }, async fetchOrderLines() { return ok(fixture('order')); } },
     cartClient: { async fetchCart() { state.reads++; return ok(rawCart(state.quantity)); }, async fetchProductForm() { return ok(productForm()); },
       async fetchCartControls() { return ok(cartControls()); }, async submitCartMutation(action, params, method) {

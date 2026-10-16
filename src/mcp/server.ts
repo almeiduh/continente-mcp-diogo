@@ -12,6 +12,7 @@ export interface ToolHandler {
   readonly inputSchema: z.ZodType;
   readonly outputSchema?: z.ZodType;
   readonly cartMutation?: boolean;
+  readonly recoveryAction?: 'get_cart' | 'get_checkout_summary';
   execute(input: unknown): Promise<CallToolResult>;
 }
 /** A prompt template. Every argument is an optional string, as MCP prompt arguments are strings. */
@@ -99,26 +100,27 @@ export class ContinenteMcpServer {
       if (scope.signal.aborted && (result.structuredContent?.result as { status?: string } | undefined)?.status !== 'partial') throw scope.signal.reason;
     } catch (error) {
       if (error instanceof RequestStopped) return this.executionError(error.code, handler.cartMutation === true,
-        scope.writeAttempted ? 'unknown' : 'not_applied');
-      return this.executionError('internal_error', handler.cartMutation === true);
+        scope.writeAttempted ? 'unknown' : 'not_applied', handler.recoveryAction ?? 'get_cart');
+      return this.executionError('internal_error', handler.cartMutation === true, 'unknown', handler.recoveryAction ?? 'get_cart');
     }
-    if (!CallToolResultSchema.safeParse(result).success) return this.executionError('invalid_result', handler.cartMutation === true);
+    if (!CallToolResultSchema.safeParse(result).success) return this.executionError('invalid_result', handler.cartMutation === true, 'unknown', handler.recoveryAction ?? 'get_cart');
     if (handler.outputSchema) {
       const validated = handler.outputSchema.safeParse(result.structuredContent);
-      if (!validated.success) return this.executionError('invalid_result', handler.cartMutation === true);
+      if (!validated.success) return this.executionError('invalid_result', handler.cartMutation === true, 'unknown', handler.recoveryAction ?? 'get_cart');
       const failed = ExecutionErrorSchema.safeParse({ result: result.structuredContent?.result }).success;
-      if (failed !== (result.isError === true)) return this.executionError('invalid_result', handler.cartMutation === true);
+      if (failed !== (result.isError === true)) return this.executionError('invalid_result', handler.cartMutation === true, 'unknown', handler.recoveryAction ?? 'get_cart');
     }
     return result;
   }
-  private executionError(code: 'internal_error' | 'invalid_result' | RequestStopped['code'], mutation: boolean, outcome: 'unknown' | 'not_applied' = 'unknown'): CallToolResult {
+  private executionError(code: 'internal_error' | 'invalid_result' | RequestStopped['code'], mutation: boolean,
+    outcome: 'unknown' | 'not_applied' = 'unknown', recoveryAction: 'get_cart' | 'get_checkout_summary' = 'get_cart'): CallToolResult {
     process.stderr.write(`[continentept-mcp] ${code}\n`);
     const message = code === 'internal_error' ? 'The tool could not complete.' : code === 'invalid_result' ? 'The tool returned an invalid result.' :
       code === 'deadline_exceeded' ? 'The request deadline was exceeded.' : code === 'queue_full' ? 'The session queue is full.' :
       code === 'server_closed' ? 'The server is shutting down.' : 'The request was cancelled.';
     const structuredContent = ExecutionErrorSchema.parse({ result: { status: 'error', error: { code, message, retryable: false },
-      ...(mutation ? { mutation: { outcome, ...(outcome === 'unknown' ? { recovery: { action: 'get_cart', automaticReplay: false } } : {}) } } : {}) } });
-    return { isError: true, structuredContent, content: [{ type: 'text', text: message + (mutation && outcome === 'unknown' ? ' Use get_cart before another change.' : '') }] };
+      ...(mutation ? { mutation: { outcome, ...(outcome === 'unknown' ? { recovery: { action: recoveryAction, automaticReplay: false } } : {}) } } : {}) } });
+    return { isError: true, structuredContent, content: [{ type: 'text', text: message + (mutation && outcome === 'unknown' ? ` Use ${recoveryAction} before another change.` : '') }] };
   }
   async connect(transport: Transport): Promise<void> { await this.server.connect(transport); }
   async close(): Promise<void> { this.shutdown.abort(new RequestStopped('server_closed')); await this.server.close(); await this.closeResources(); }

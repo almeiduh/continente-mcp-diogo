@@ -1,6 +1,6 @@
 # Tool reference
 
-Continente MCP exposes 11 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 15 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
@@ -10,6 +10,10 @@ behaviour annotations.
 | `get_product` | No | No | `productId` |
 | `list_favorites` | Yes | No | `refresh` (default `false`) |
 | `get_cart` | Yes | No | — |
+| `get_checkout_summary` | Yes | No | — |
+| `list_coupons` | Yes | No | — |
+| `set_cart_coupons` | Yes | Yes | `couponIds` (IDs returned by `list_coupons`) |
+| `list_pickup_stores` | No | No | `postalCode`, `latitude`, `longitude`, optional `city` |
 | `add_cart_item` | Yes | Yes | `productId`, `quantity` (> 0, default 1), `cartItemId?` |
 | `set_cart_item_quantity` | Yes | Yes | `productId`, `quantity` (≥ 0), `cartItemId?` |
 | `remove_cart_item` | Yes | Yes | `productId`, `cartItemId?` |
@@ -124,6 +128,44 @@ automatically when missing, is marked `stale` after 24 hours, and is replaced wh
 Favorites can include products the website no longer sells, still with their last price. Check
 with `get_product` before adding one to the cart; it returns `not_found` for those.
 
+## Coupons
+
+### `list_coupons`
+
+Reads coupon cards already rendered on the signed-in account coupon page. Each result returns the
+displayed coupon identifier, description, availability text and benefit badge when present.
+`eligibility` is always `unknown` and `expiry` is `null`: the account card does not establish
+cart-specific eligibility, expiry or stacking. A complete empty list is reported only when the
+page shows its visible empty-state marker. `benefitQualifier` carries the displayed qualifier
+when present.
+
+`data`: `coupons`, `completeness`.
+
+### `set_cart_coupons`
+
+Sets the cart's selected coupon set using IDs returned by `list_coupons`. The server freshly reads
+the basket form and sends its current description, amount, unit and carousel flag; callers cannot
+provide or override those fields. It reads the basket again and reports `outcome: confirmed` only
+when the live checkbox state matches the requested set. `outcome: unknown` means the request may
+have changed the cart; read the current basket before making another coupon change. The request is
+never replayed automatically. An empty `couponIds` array requests clearing the selection.
+
+`data`: `outcome`, `selectedCouponIds`.
+
+## Pickup stores
+
+### `list_pickup_stores`
+
+Uses the observed locator AJAX GET contract with a Portuguese postal code and public coordinates,
+then parses pickup-capable store rows from the returned HTML. If the page exposes a next-chunk
+continuation, `completeness` stays `unknown`; the tool reports only the returned page. Coordinates
+must be provided by the caller; the server does not access a geocoding service or browser
+geolocation. `city` is optional.
+`selectedStoreChanged` is always `false`; this tool does not call the store-context endpoint. It
+does not list pickup slots, fees, or stock.
+
+`data`: `stores`, `completeness`, `selectedStoreChanged`.
+
 ## Cart
 
 ### `get_cart`
@@ -151,6 +193,19 @@ with `get_product` before adding one to the cart; it returns `not_found` for tho
   | `grandTotal` | The amount to pay as the website shows it. It includes the bags. |
 
   Report `grandTotal` as the amount to pay, and don't add the other fields to it yourself.
+
+### `get_checkout_summary`
+
+Reads the basket-stage totals and the loyalty credit currently displayed under “Acumula em
+Cartão”. `immediateDiscounts` mirrors the reported order and shipping discounts in the cart
+totals; it is not a measure of all savings, and does not include discounts already embedded in
+line prices. `loyaltyCredit` is a separate earned-credit amount and is never subtracted from
+`grandTotal`. `selectedCouponIds` is
+`null` when the basket page does not expose selected checkboxes. `stage` is `basket` and
+`provisional` is always `true`: this is not a final delivery or checkout quote.
+
+`data`: `stage`, `provisional`, `totals`, `immediateDiscounts`, `loyaltyCredit`,
+`selectedCouponIds`.
 
 ### Changing the cart
 
