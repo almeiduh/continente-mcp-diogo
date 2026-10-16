@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-16
+
 ### Changed
 
 - The server runs on the MCP server package (`@modelcontextprotocol/server` 2.x) instead of the full SDK, which also installed an HTTP server stack this stdio server never used. Installing it now brings 26 packages instead of 113, and the Claude Desktop extension is about 1.6 MB smaller. Tools, prompts and protocol versions are unchanged; task-augmented tool calls are still refused before they run.
@@ -131,7 +133,8 @@ All notable changes to this project are documented here. The format follows
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/andredelgado/continente-mcp/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/andredelgado/continente-mcp/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/andredelgado/continente-mcp/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/andredelgado/continente-mcp/compare/v0.5.0...v0.6.0
