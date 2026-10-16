@@ -61,6 +61,10 @@ protocol messages only.
   unknown rather than defaulting to a plausible value.
 - **Fix at the boundary.** When the website changes, update the parser and its fixture, and
   add a test for the new markup.
+- **The tool contract is pinned.** `test/contract/tools.json` holds every tool's name, title,
+  hints, input and output schemas, plus the prompts and resources (descriptions left out). When
+  a change to these is deliberate, run `npm run contract:update`, review the diff, and note the
+  change in `CHANGELOG.md`; the test fails until you do.
 - The `basket-planner` prompt text in `src/mcp/guide.ts` must match the body of
   `skills/basket-planner/SKILL.md`. Edit both together; a test fails when they differ.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for pull request titles
