@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- [docs/stability.md](docs/stability.md) says what 1.0 will promise: the tool contract, what counts as a breaking change, the two lists that can grow (error codes and promotion kinds), and how something is deprecated.
 - `get_cart` and `preview_cart_changes` have `checkout`: the minimum order the cart states (`minimumOrder`, `meetsMinimum`), whether the account has EntregaZero, and `deliveryFee`, which is `free` when EntregaZero applies (orders of €50 or more) and otherwise `set_at_checkout`, as the fee depends on the day, slot and area chosen at checkout. `preview_cart_changes` also gives `productsAfter`, the cart's products total once its lines are applied, and judges the minimum order and delivery on it. The text says, for example, "Minimum order: €20.00, reached." and "Delivery: free with your EntregaZero (orders of €50.00 or more).", or how much is still to go. The weekly site check confirms the €50 EntregaZero threshold on Continente's help pages.
 
 ### Changed

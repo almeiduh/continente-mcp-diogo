@@ -175,6 +175,7 @@ continentept-mcp --version
 ## Documentation
 
 - [Tool reference](docs/tools.md)
+- [Stability](docs/stability.md): what counts as a breaking change from 1.0
 - [Configuration](docs/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](CONTRIBUTING.md)
