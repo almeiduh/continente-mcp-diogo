@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-17
+
 ### Added
 
 - [docs/stability.md](docs/stability.md) says what 1.0 will promise: the tool contract, what counts as a breaking change, the two lists that can grow (error codes and promotion kinds), and how something is deprecated.
@@ -182,7 +184,8 @@ Contract review before 1.0. These change field names and shapes; clients that re
 - Automatic sign-in from environment variables or a private credentials file, and a `login` command.
 - The `basket-planner` skill for planning a shopping list and updating the basket.
 
-[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/andredelgado/continente-mcp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/andredelgado/continente-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/andredelgado/continente-mcp/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/andredelgado/continente-mcp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/andredelgado/continente-mcp/compare/v0.7.1...v0.8.0
