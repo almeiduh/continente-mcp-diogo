@@ -215,7 +215,9 @@ export const BasketPreviewLineSchema = z.strictObject({
   packageText: z.string().nullable(),
   package: PackageSchema.nullable(),
   saleRules: ProductSaleRulesSchema.nullable(),
-  /** Cost of the desired total at the current price; null when it cannot be worked out. */
+  /** The product's promotions, from its product page; empty when none. */
+  promotions: z.array(PromotionSchema),
+  /** Cost of the desired total at the current price, before any multi-buy or nth-unit offer the cart applies; null when it cannot be worked out. */
   estimatedCost: MoneySchema.nullable(),
   /** The cost depends on the weight picked, for products sold by the piece but priced by weight. */
   estimated: z.boolean(),

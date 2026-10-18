@@ -134,3 +134,28 @@ test('a family tile\'s badge is not given to the pack size it shows, and a produ
   ]);
   assert.deepEqual(page.positions, [0, 1, 3]);
 });
+
+test('a preview says what a multi-buy or nth-unit offer means for the planned number of units', async t => {
+  const { injectedServices: inject } = await import('../test-support/mcp-fixture.js');
+  const { services } = inject();
+  services.cart.getCart = async () => parseCartResponse(minicart());
+  const rules = { saleUnit: 'un' as const, storefrontUnit: 'un' as const, storefrontUnitsPerSaleUnit: 1, minimum: { value: 1, unit: 'un' as const }, maximum: { value: 99, unit: 'un' as const }, step: { value: 1, unit: 'un' as const } };
+  const product = (id: string, name: string, cents: number, offer: Promotion) => ({ productId: ProductIdSchema.parse(id), productSlug: null, name, url: `https://www.continente.pt/produto/p-${id}.html`,
+    price: { amount: eur(cents), per: 'item' as const }, secondaryPrice: null, recommendedPrice: null, promotions: [offer], packageText: null, package: null, minimumText: null,
+    drainedPrice: null, unitPrice: null, imageUrl: null, availability: 'available' as const, saleRules: { status: 'available' as const, rules } });
+  const products: Record<string, ReturnType<typeof product>> = {
+    8607640: product('8607640', 'Paté com Bacalhau', 39, promotion('multi_buy', 'Leve 3 Por 1€', { bundle: { quantity: 3, total: eur(100) } })),
+    7462865: product('7462865', 'Snack para Cão', 459, promotion('nth_unit_discount', '20% na 2ª un', { percentOff: 20, nthUnit: 2 })),
+  };
+  services.catalog.getProduct = async reference => ok(products[reference]!);
+  const { client } = await connect(t, services);
+  const hints = async (productId: string, quantity: number) => textOf(await client.callTool({ name: 'preview_cart_changes', arguments: { items: [{ productId, quantity }] } }))
+    .split('\n').filter(line => line.includes('offer:')).map(line => line.trim());
+  assert.deepEqual(await hints('8607640', 1), ['offer: Leve 3 Por 1€: 2 more make it 3 for €1.00']);
+  assert.deepEqual(await hints('8607640', 3), ['offer: Leve 3 Por 1€ applies: 3 for €1.00 in the cart (not in the estimate)']);
+  assert.deepEqual(await hints('8607640', 4), ['offer: Leve 3 Por 1€: 3 for €1.00 applies; 2 more make it 6 for €2.00']);
+  assert.deepEqual(await hints('8607640', 6), ['offer: Leve 3 Por 1€ applies: 6 for €2.00 in the cart (not in the estimate)']);
+  assert.deepEqual(await hints('7462865', 1), ['offer: 20% na 2ª un: take 2 for 20% off the 2nd unit']);
+  assert.deepEqual(await hints('7462865', 2), ['offer: 20% na 2ª un applies: 20% off the 2nd unit in the cart (not in the estimate)']);
+  assert.deepEqual(await hints('8607640', 0), []);
+});

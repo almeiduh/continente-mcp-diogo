@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `preview_cart_changes` lines have the product's `promotions`, and the text says what a multi-buy or nth-unit offer means for the planned number of units: "Leve 3 Por 1€: 2 more make it 3 for €1.00", or "applies: 3 for €1.00 in the cart" once it does. The line's estimate stays at the shelf price, as the cart applies these offers.
 - `npm run sync:server-json` brings the repository's `server.json` up to the published release (version, extension URL and checksum), and a test checks it names one release throughout. It listed 0.3.0 until now; the MCP Registry itself was always current.
 
 ## [0.11.0] - 2026-10-17

@@ -354,8 +354,11 @@ part is unknown) and `checkout` (as in [`get_cart`](#get_cart), for `productsAft
 | `current` | What the cart holds now; zero when the product is not in it |
 | `change` | `add`, `increase`, `decrease`, `remove` or `none`; `null` when it would be refused |
 | `error` | Why it would be refused, such as `quantity_below_minimum` or a fractional number of pieces |
-| `availability`, `price`, `packageText`, `package`, `saleRules` | As in `get_product` |
-| `estimatedCost`, `estimated` | The desired total at today's price; `estimated` for products charged by weight |
+| `availability`, `price`, `packageText`, `package`, `saleRules`, `promotions` | As in `get_product` |
+| `estimatedCost`, `estimated` | The desired total at today's price, before any multi-buy or nth-unit offer (the cart applies those); `estimated` for products charged by weight |
+
+The text adds what an offer means for the planned number of units, such as
+`Leve 3 Por 1€: 2 more make it 3 for €1.00` or `Leve 3 Por 1€ applies: 3 for €1.00 in the cart`.
 
 A preview is not a reservation: prices and stock can change before you apply it, and each change
 is still confirmed by `set_cart_item_quantity`. `package` helps catch a mix-up such as six

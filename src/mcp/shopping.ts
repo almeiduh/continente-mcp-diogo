@@ -3,7 +3,7 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
 import type { ResourceHandler, ToolHandler } from './server.js';
 import { PICKER_HTML, PICKER_META, PICKER_MIME_TYPE, PICKER_URI } from './picker.js';
 import type { Clock, SessionService, MutationResult } from '../ports.js';
-import type { BasketPreview, Checkout, PriceTag, ProductId, ProductLabel, Promotion, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
+import type { BasketPreview, BasketPreviewLine, Checkout, PriceTag, ProductId, ProductLabel, Promotion, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure, parseProductReference } from '../domain/index.js';
 import * as contracts from './contracts.js';
 import { withAuthenticationRecovery } from '../services/recovery.js';
@@ -164,6 +164,28 @@ function checkoutLines(checkout: Checkout, products: Money | null): string[] {
         (checkout.freeDeliveryFrom ? ` Your EntregaZero makes it free from ${euros(checkout.freeDeliveryFrom)}${short(checkout.freeDeliveryFrom) ? `: ${short(checkout.freeDeliveryFrom)} to go` : ''}.` : ''),
   ];
 }
+/**
+ * What a multi-buy or nth-unit offer means for a line's planned number of units. The cart applies
+ * these offers, so the line's estimate does not include them.
+ */
+function offerHints(line: BasketPreviewLine): string[] {
+  const planned = line.requested?.unit === 'un' && line.change !== null && line.change !== 'remove' ? line.requested.value : 0;
+  if (!Number.isInteger(planned) || planned <= 0) return [];
+  return line.promotions.flatMap(promotion => {
+    if (promotion.kind === 'multi_buy' && promotion.bundle) {
+      const { quantity, total } = promotion.bundle;
+      const sets = Math.floor(planned / quantity); const missing = (quantity - (planned % quantity)) % quantity;
+      const priced = (count: number) => `${count * quantity} for ${euros({ currency: 'EUR', minorUnits: count * total.minorUnits })}`;
+      return [missing === 0 ? `${promotion.label} applies: ${priced(sets)} in the cart (not in the estimate)`
+        : `${promotion.label}: ${sets ? `${priced(sets)} applies; ` : ''}${missing} more make${missing === 1 ? 's' : ''} it ${priced(sets + 1)}`];
+    }
+    if (promotion.kind === 'nth_unit_discount' && promotion.nthUnit && promotion.percentOff) {
+      return [planned >= promotion.nthUnit ? `${promotion.label} applies: ${promotion.percentOff}% off the ${ordinal(promotion.nthUnit)} unit in the cart (not in the estimate)`
+        : `${promotion.label}: take ${promotion.nthUnit} for ${promotion.percentOff}% off the ${ordinal(promotion.nthUnit)} unit`];
+    }
+    return [];
+  });
+}
 function formatPreview(preview: BasketPreview): string {
   const list = numbered(preview.lines.map(line => {
     const head = `${line.name ?? 'Unknown product'} [${line.productId}]`;
@@ -172,7 +194,8 @@ function formatPreview(preview: BasketPreview): string {
     const cost = line.estimatedCost ? `, ${line.estimated ? 'about ' : ''}${euros(line.estimatedCost)}` : ', cost unknown';
     const pack = line.packageText ? `pack ${line.packageText}${line.package ? ` (${packSummary(line.package)})` : ''}, ` : '';
     const weight = line.storefrontQuantity ? `, about ${amount(line.storefrontQuantity)}` : '';
-    return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'}${weight} (cart has ${now})${cost}\n   ${pack}${line.availability}`;
+    return `${head} — ${line.change} to ${line.requested ? amount(line.requested) : '?'}${weight} (cart has ${now})${cost}\n   ${pack}${line.availability}` +
+      offerHints(line).map(hint => `\n   offer: ${hint}`).join('');
   }));
   const total = preview.estimatedCost ? `${preview.estimated ? 'about ' : ''}${euros(preview.estimatedCost)}` : 'unknown';
   const after = preview.productsAfter ? `\nProducts in the cart after these changes: ${preview.estimated ? 'about ' : ''}${euros(preview.productsAfter)}` : '';

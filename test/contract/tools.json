@@ -7567,6 +7567,201 @@
                                 }
                               ]
                             },
+                            "promotions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "recommended_price",
+                                      "immediate_discount",
+                                      "multi_buy",
+                                      "nth_unit_discount",
+                                      "other"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "previousPrice": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "amount": {
+                                            "type": "object",
+                                            "properties": {
+                                              "currency": {
+                                                "type": "string",
+                                                "const": "EUR"
+                                              },
+                                              "minorUnits": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "currency",
+                                              "minorUnits"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "per": {
+                                            "type": "string",
+                                            "enum": [
+                                              "item",
+                                              "piece",
+                                              "kg",
+                                              "l"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "amount",
+                                          "per"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "percentOff": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 100
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "amountOff": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "currency": {
+                                            "type": "string",
+                                            "const": "EUR"
+                                          },
+                                          "minorUnits": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "currency",
+                                          "minorUnits"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "bundle": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "quantity": {
+                                            "type": "integer",
+                                            "minimum": 2,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "total": {
+                                            "type": "object",
+                                            "properties": {
+                                              "currency": {
+                                                "type": "string",
+                                                "const": "EUR"
+                                              },
+                                              "minorUnits": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "currency",
+                                              "minorUnits"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "required": [
+                                          "quantity",
+                                          "total"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "nthUnit": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 2,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "validFrom": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "validTo": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "label",
+                                  "previousPrice",
+                                  "percentOff",
+                                  "amountOff",
+                                  "bundle",
+                                  "nthUnit",
+                                  "validFrom",
+                                  "validTo"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
                             "estimatedCost": {
                               "anyOf": [
                                 {
@@ -7675,6 +7870,7 @@
                             "packageText",
                             "package",
                             "saleRules",
+                            "promotions",
                             "estimatedCost",
                             "estimated",
                             "error"

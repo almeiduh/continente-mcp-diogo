@@ -71,7 +71,7 @@ export class BasketPreviewService {
     const { productId } = reference.value;
     const blank = (error: ToolError): BasketPreviewLine => ({ productId, cartItemId, name: null, requested: null, storefrontQuantity: null,
       current: { status: 'unknown', value: null, rawText: null, reason: null }, change: null, availability: null, price: null,
-      packageText: null, package: null, saleRules: null, estimatedCost: null, estimated: false, error });
+      packageText: null, package: null, saleRules: null, promotions: [], estimatedCost: null, estimated: false, error });
     const key = `${productId}|${item.cartItemId ?? ''}`;
     if (seen.has(key)) return blank({ code: 'invalid_input', message: 'This product is listed more than once', retryable: false });
     seen.add(key);
@@ -86,7 +86,7 @@ export class BasketPreviewService {
       : line ? line.quantity : { status: 'known', quantity: { value: 0, unit: unit ?? 'un' } };
     const base: BasketPreviewLine = { productId, cartItemId: cartItemId ?? line?.cartItemId ?? null, name: details.name,
       requested: unit ? { value: item.quantity, unit } : null, storefrontQuantity: null, current, change: null, availability: details.availability, price: details.price,
-      packageText: details.packageText, package: details.package, saleRules: rules, estimatedCost: null, estimated: false, error: null };
+      packageText: details.packageText, package: details.package, saleRules: rules, promotions: details.promotions, estimatedCost: null, estimated: false, error: null };
     if (!selected.ok) return { ...base, error: selected.error };
     if (item.cartItemId !== undefined && !line) return { ...base, error: { code: 'not_found', message: 'No cart line has this cartItemId. Use get_cart to read current lines.', retryable: false } };
     if (details.saleRules.status === 'unavailable') return { ...base, error: details.saleRules.error };
