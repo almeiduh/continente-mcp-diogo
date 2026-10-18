@@ -82,7 +82,9 @@ Maintainers only.
 3. Publishing the release runs the test matrix and publishes the same version to npm with
    provenance (`latest`, or `next` for prereleases), attaches `continente-mcp.mcpb` to
    the release, and updates the MCP Registry listing from `server.json` (stable releases
-   only). The workflow fills in the version and the extension checksum, so `server.json`
-   needs editing only when the listing itself changes.
+   only). The workflow fills in the version and the extension checksum for the listing.
+4. Once the release is published, run `npm run sync:server-json` and commit the result
+   (`chore: list X.Y.Z in server.json`), so the repository's `server.json` shows the same
+   version, extension URL and checksum as the listing.
 
 Never reuse or overwrite a published version.

@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `npm run sync:server-json` brings the repository's `server.json` up to the published release (version, extension URL and checksum), and a test checks it names one release throughout. It listed 0.3.0 until now; the MCP Registry itself was always current.
+
 ## [0.11.0] - 2026-10-17
 
 ### Added

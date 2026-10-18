@@ -26,3 +26,13 @@ test('the listed extension points at the release asset the workflow uploads', ()
   const extension = server.packages.find(entry => entry.registryType === 'mcpb');
   assert.match(present(extension).identifier, /^https:\/\/github\.com\/andredelgado\/continente-mcp\/releases\/download\/v[^/]+\/continente-mcp\.mcpb$/);
 });
+
+test('server.json names one release throughout: its version, the npm package and the extension', () => {
+  const listing = z.object({ version: z.string(), packages: z.array(z.object({ registryType: z.string(), identifier: z.string(), version: z.string().optional(), fileSha256: z.string().optional() })) })
+    .parse(read('server.json'));
+  const npm = present(listing.packages.find(entry => entry.registryType === 'npm'));
+  const extension = present(listing.packages.find(entry => entry.registryType === 'mcpb'));
+  assert.equal(npm.version, listing.version);
+  assert.ok(extension.identifier.includes(`/download/v${listing.version}/`), 'the extension URL is for another release');
+  assert.match(extension.fileSha256 ?? '', /^[0-9a-f]{64}$/);
+});
