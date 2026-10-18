@@ -124,6 +124,8 @@ Continente cart"* or *"What do I usually buy? Build me a list for this week."*
 | `list_coupons` | Displayed account coupons; eligibility and expiry stay unknown |
 | `set_cart_coupons` | Select coupons in the cart using IDs from `list_coupons` |
 | `list_pickup_stores` | Pickup store search using a postal code and public coordinates |
+| `list_pickup_slots` | Read pickup times already rendered for an explicit date window |
+| `set_pickup_store` | Change the selected primary pickup store and verify the new context |
 | `add_cart_item` | Add an amount on top of what is in the cart |
 | `set_cart_item_quantity` | Make the cart hold exactly a quantity; zero removes |
 | `remove_cart_item` | Remove a line from the cart |
@@ -170,7 +172,7 @@ continentept-mcp --version
 - Login handles the standard email and password flow. If the website asks for extra
   verification, run `continentept-mcp login --show-browser` and complete it in the browser
   window.
-- There are no fulfilment-selection, pickup-slot reservation, checkout or payment tools. Coupon selection changes cart context and is verified by reading the selected state back. Store lookup uses a verified read-only locator response and does not change the selected store.
+- `set_pickup_store` changes only the primary pickup store through the observed coverage/context flow and reads the context back; pickup mode must already be active, so it does not switch from home delivery. After a confirmed change, re-read the cart and coupons. `list_pickup_slots` reads server-rendered availability for the verified selected store and only accepts a window within the next 31 days; it does not load more dates or reserve a slot. There are no slot reservation, checkout, payment or order-submission tools. Never open or navigate to payment.
 
 ## Documentation
 

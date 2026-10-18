@@ -1,6 +1,6 @@
 # Tool reference
 
-Continente MCP exposes 15 tools, server instructions and one prompt. Every tool has a strict
+Continente MCP exposes 17 tools, server instructions and one prompt. Every tool has a strict
 input schema (unknown fields are rejected), an output schema, a title and the four MCP
 behaviour annotations.
 
@@ -14,6 +14,8 @@ behaviour annotations.
 | `list_coupons` | Yes | No | — |
 | `set_cart_coupons` | Yes | Yes | `couponIds` (IDs returned by `list_coupons`) |
 | `list_pickup_stores` | No | No | `postalCode`, `latitude`, `longitude`, optional `city` |
+| `list_pickup_slots` | Yes | No | `fromDate`, `toDate` (ISO dates, at most 31 days inclusive) |
+| `set_pickup_store` | Yes | Yes (store context) | `storeId`, `fromDate`, `toDate` (recovery window, at most 31 days inclusive) |
 | `add_cart_item` | Yes | Yes | `productId`, `quantity` (> 0, default 1), `cartItemId?` |
 | `set_cart_item_quantity` | Yes | Yes | `productId`, `quantity` (≥ 0), `cartItemId?` |
 | `remove_cart_item` | Yes | Yes | `productId`, `cartItemId?` |
@@ -162,9 +164,42 @@ continuation, `completeness` stays `unknown`; the tool reports only the returned
 must be provided by the caller; the server does not access a geocoding service or browser
 geolocation. `city` is optional.
 `selectedStoreChanged` is always `false`; this tool does not call the store-context endpoint. It
-does not list pickup slots, fees, or stock.
+does not list fees or inventory.
 
 `data`: `stores`, `completeness`, `selectedStoreChanged`.
+
+### `list_pickup_slots`
+
+Reads the existing delivery page through a direct GET and parses the slot data already embedded
+in its HTML. It requires an explicit upcoming date window within the next 31 inclusive dates and
+confirms one primary pickup step, its selected radio, current store marker, and matching shipment
+IDs before reporting slots. If this context cannot be verified, it returns no slots and
+`completeness: "unknown"`. The website's date labels omit the year; the parser resolves a displayed
+day and Portuguese month only against that bounded upcoming window. `dateYearBasis` records that
+interpretation.
+
+The result covers server-rendered days only, so it can list observed times but always reports
+`partial` when slots are present. It does not execute page JavaScript, request additional dates,
+expose shipment or reservation identifiers, change the store, reserve a slot, or open payment.
+`selectedStoreChanged` and `slotReserved` are always `false`.
+
+`data`: `pickupMode`, `selectedStoreId`, `storePostalCode`, `dateWindow`, `dateYearBasis`, `coverage`, `slots`,
+`completeness`, `selectedStoreChanged`, `slotReserved`.
+
+### `set_pickup_store`
+
+Changes the selected primary pickup store to a `storeId` returned by `list_pickup_stores` only
+when pickup mode is already selected and that ID is also a fresh selectable choice on the delivery page. It does not switch from home delivery to pickup; that transition is not supported by the verified current page contract. The server reads the exact
+store coverage endpoint, then submits the observed store-context form once and fetches the delivery
+page again to verify that both the current-store marker and selected radio match. It does not use
+the multi-shipment address update path or locator's context-changing controls.
+
+The result is `confirmed`, `not_applied`, or `unknown`. A confirmed change sets
+`cartAndCouponsNeedRevalidation: true`; read the cart and coupons again because store context can
+affect them. An unknown result is never replayed and includes `list_pickup_slots` recovery with the
+caller-supplied date window. A no-op for the already selected store is confirmed without a write.
+This operation does not reserve a slot or open payment. Slot auto-selection performed by the
+retailer page itself is outside this operation; the MCP reads that page only through direct HTTP.
 
 ## Cart
 

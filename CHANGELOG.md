@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format follows
 - `set_cart_coupons` applies only explicitly requested coupon IDs using fresh basket-form data and verifies the selected state without replaying uncertain writes.
 - `get_checkout_summary` separates immediate discounts from earned loyalty credit in a provisional basket-stage summary.
 - `list_pickup_stores` uses the observed geocoded GET contract and returns pickup-capable store rows without changing selected-store context.
+- `list_pickup_slots` reads pickup mode and slot times already rendered in delivery-page HTML for an explicit date window; it does not run page JavaScript, reserve a slot, or change the store.
+- `set_pickup_store` changes an already-active primary pickup context through the observed coverage/context flow and verifies readback; switching from home delivery and reserving a slot remain unsupported.
 
 ### Security
 

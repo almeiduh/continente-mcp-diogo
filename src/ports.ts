@@ -1,4 +1,4 @@
-import type { BrowserStatus, CartMutationResult, CheckoutSummary, CouponList, CouponSelection, FavoritesCache, PickupStores, Result, ToolError } from './domain/index.js';
+import type { BrowserStatus, CartMutationResult, CheckoutSummary, CouponList, CouponSelection, FavoritesCache, PickupSlots, PickupStoreChange, PickupStores, Result, ToolError } from './domain/index.js';
 
 export type Logger = (message: string) => void;
 export interface Clock { now(): Date; }
@@ -38,4 +38,9 @@ export interface CouponSelectionGateway {
 }
 export interface PickupStoreQuery { postalCode: string; latitude: number; longitude: number; city?: string; }
 export interface PickupStoreGateway { fetchPickupStores(query: PickupStoreQuery): Promise<Result<PickupStores, ToolError>>; }
+export interface PickupStoreSelectionGateway {
+  setPickupStore(storeId: string, recoveryWindow: PickupSlotWindow): Promise<Result<PickupStoreChange, ToolError>>;
+}
+export interface PickupSlotWindow { from: string; to: string; }
+export interface PickupSlotGateway { fetchPickupSlots(window: PickupSlotWindow): Promise<Result<PickupSlots, ToolError>>; }
 export type MutationResult = Result<CartMutationResult, ToolError>;

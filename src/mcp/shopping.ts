@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolHandler } from './server.js';
-import type { CouponGateway, CouponSelectionGateway, PickupStoreGateway, SessionService, MutationResult } from '../ports.js';
+import type { CouponGateway, CouponSelectionGateway, PickupSlotGateway, PickupSlotWindow, PickupStoreGateway, PickupStoreSelectionGateway, SessionService, MutationResult } from '../ports.js';
 import type { PriceTag, UpdateStatus, CartMutationResult, Money, ObservedQuantity, Order, ProductDetails, ProductSaleRules, Quantity, Result, ToolError } from '../domain/index.js';
 import { failure } from '../domain/index.js';
 import * as contracts from './contracts.js';
@@ -12,7 +12,7 @@ import type { OrderService, PurchaseHistoryService, OrderListOptions } from '../
 
 export interface ShoppingServices {
   catalog: CatalogService; favorites: FavoritesService; cart: CartService; orders: OrderService;
-  history: PurchaseHistoryService; session: SessionService; coupons: CouponGateway; couponSelection: CouponSelectionGateway; pickupStores: PickupStoreGateway;
+  history: PurchaseHistoryService; session: SessionService; coupons: CouponGateway; couponSelection: CouponSelectionGateway; pickupStores: PickupStoreGateway; pickupSlots: PickupSlotGateway; pickupStoreSelection: PickupStoreSelectionGateway;
 }
 
 type Status = 'success' | 'empty' | 'partial';
@@ -207,6 +207,32 @@ export class ShoppingHandlers {
     data.completeness === 'complete' ? data.stores.length ? 'success' : 'empty' : 'partial');
   }
 
+  async listPickupSlots(window: PickupSlotWindow): Promise<CallToolResult> {
+    const result = await this.recover(() => this.services.pickupSlots.fetchPickupSlots(window));
+    if (!result.ok) return this.failed(result.error);
+    const data = result.value;
+    const slots = data.slots.map(slot => `${slot.date}${slot.weekday ? ` (${slot.weekday})` : ''}: ${slot.startTime ?? 'time unknown'}–${slot.endTime ?? 'time unknown'}${slot.shippingCost ? `; ${slot.shippingCost}` : ''}`).join('\n');
+    const mode = data.pickupMode === 'pickup' ? `pickup at ${data.storePostalCode ?? 'the selected store'}` : 'pickup mode could not be verified';
+    const text = data.completeness === 'complete'
+      ? (slots ? `Available pickup slots for ${mode}, ${window.from} to ${window.to}:\n${slots}` : `No pickup slots were listed for ${mode}, ${window.from} to ${window.to}.`)
+      : `Pickup slot availability is incomplete or unknown for ${window.from} to ${window.to}; ${mode}.`;
+    return response(data, `${text}\nThis read did not change the selected store or reserve a slot.`, data.completeness === 'complete' ? 'success' : 'partial');
+  }
+
+  async setPickupStore(storeId: string, recoveryWindow: PickupSlotWindow): Promise<CallToolResult> {
+    const result = await this.recover(() => this.services.pickupStoreSelection.setPickupStore(storeId, recoveryWindow));
+    if (!result.ok) return this.failed(result.error);
+    const data = result.value;
+    const text = data.outcome === 'confirmed'
+      ? (data.selectedStoreChanged
+        ? `Pickup store changed to ${data.storeName ?? data.selectedStoreId} (${data.storePostalCode ?? 'postcode unavailable'}). Re-read the cart and selected coupons because delivery context can affect them.`
+        : `Pickup store ${data.storeName ?? data.selectedStoreId} was already selected; nothing changed.`)
+      : data.outcome === 'not_applied'
+        ? `The pickup store was not changed; ${data.storeName ?? data.selectedStoreId} remains selected.`
+        : `The pickup store change outcome is unknown. Do not repeat it. Use list_pickup_slots for ${recoveryWindow.from} to ${recoveryWindow.to}, then re-read the cart and coupons.`;
+    return response(data, `${text} This operation did not reserve a slot or open payment.`, data.outcome === 'unknown' ? 'partial' : 'success');
+  }
+
   private async mutation(result: MutationResult, operation: 'add' | 'set' | 'remove'): Promise<CallToolResult> {
     if (!result.ok) return this.failed(result.error, { outcome: 'not_applied' });
     const value = result.value;
@@ -290,8 +316,9 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
   const handlers = new ShoppingHandlers(services, update);
   function tool<T>(name: string, title: string, description: string, inputSchema: z.ZodType<T>, outputSchema: z.ZodType,
     annotations: ToolAnnotations, execute: (args: T) => Promise<CallToolResult>, cartMutation = false,
-    recoveryAction: 'get_cart' | 'get_checkout_summary' = 'get_cart'): ToolHandler {
+    recoveryAction: 'get_cart' | 'get_checkout_summary' | 'list_pickup_slots' = 'get_cart', recoveryInput?: (args: T) => unknown): ToolHandler {
     return { definition: { name, title, description, annotations }, inputSchema, outputSchema, cartMutation, recoveryAction,
+      ...(recoveryInput ? { recoveryInput: raw => recoveryInput(raw as T) } : {}),
       execute: raw => services.session.run(() => execute(raw as T)) };
   }
   return [
@@ -327,6 +354,15 @@ export function registerShoppingTools(services: ShoppingServices, update: Update
       'Search pickup-capable stores near an explicit postal code and public coordinates. This reads store rows only; it does not change selected-store context or inspect pickup slots.',
       contracts.PickupStoresInput, contracts.PickupStoresOutput, READ,
       args => handlers.listPickupStores({ postalCode: args.postalCode, latitude: args.latitude, longitude: args.longitude, ...(args.city ? { city: args.city } : {}) })),
+    tool('list_pickup_slots', 'List pickup slots',
+      'Read currently rendered pickup availability for an explicit date window of up to 31 days. The selected delivery mode must already be pickup. This reads server-rendered HTML only; it does not change the selected store, run the page JavaScript auto-selection, reserve a slot, or proceed to payment.',
+      contracts.PickupSlotsInput, contracts.PickupSlotsOutput, READ,
+      args => handlers.listPickupSlots({ from: args.fromDate, to: args.toDate })),
+    tool('set_pickup_store', 'Set pickup store',
+      'Change the selected primary pickup store to a fresh selectable storeId from list_pickup_stores. The operation verifies the store coverage response, changes store context once, and reads the delivery page back. If the result is uncertain, do not repeat it; the supplied date window is used for recovery with list_pickup_slots. Re-read the cart and coupons after a confirmed context change. This does not reserve a slot or open payment.',
+      contracts.SetPickupStoreInput, contracts.PickupStoreChangeOutput, UPDATE,
+      args => handlers.setPickupStore(args.storeId, { from: args.fromDate, to: args.toDate }), true, 'list_pickup_slots',
+      args => ({ action: 'list_pickup_slots', fromDate: args.fromDate, toDate: args.toDate, automaticReplay: false })),
     tool('add_cart_item', 'Add to cart',
       'Add an amount of a product to the cart, on top of any quantity already there. quantity is in the product sale unit (default 1). ' +
       `Use set_cart_item_quantity instead when the user wants a specific total. ${UNCERTAIN_WRITE}`,

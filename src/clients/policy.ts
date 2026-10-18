@@ -55,3 +55,16 @@ export function allowedCouponMutation(value: string, method: 'GET' | 'POST'): bo
       url.pathname === '/on/demandware.store/Sites-continente-Site/default/Cart-ApplyCustomerBenefits';
   } catch { return false; }
 }
+
+/** Primary pickup context has its own two-route boundary, separate from cart/coupon writes. */
+export function allowedPickupStoreContextRequest(value: string, method: 'GET' | 'POST'): boolean {
+  try {
+    const url = new URL(value, STOREFRONT_ORIGIN);
+    if (url.origin !== STOREFRONT_ORIGIN || url.username || url.password || url.search || url.hash) return false;
+    const routes: Record<string, 'GET' | 'POST'> = {
+      '/on/demandware.store/Sites-continente-Site/default/Stores-GetCoverageArea': 'GET',
+      '/on/demandware.store/Sites-continente-Site/default/Stores-SetStoreContext': 'POST',
+    };
+    return routes[url.pathname] === method;
+  } catch { return false; }
+}

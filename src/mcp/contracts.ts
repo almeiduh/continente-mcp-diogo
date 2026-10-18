@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MAX_REFERENCE_LENGTH, isProductReference, CartSchema, ProductDetailsSchema, FavoriteProductSchema, OrderSchema, ProductSchema, PurchaseFrequencySchema,
-  ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema, CouponListSchema, CouponSelectionSchema, CheckoutSummarySchema, PickupStoresSchema } from '../domain/index.js';
+  ToolErrorSchema, CartMutationResultSchema, CartItemIdSchema, OrderIdSchema, BrowserStatusSchema, FavoritesStatusSchema, UpdateStatusSchema, CouponListSchema, CouponSelectionSchema, CheckoutSummarySchema, PickupSlotsSchema, PickupStoresSchema, PickupStoreChangeSchema } from '../domain/index.js';
 
 export const ProductReferenceInput = z.string().min(1).max(MAX_REFERENCE_LENGTH).regex(/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.html)?$/)
   .refine(isProductReference, 'Expected a numeric productId or a product slug ending in it')
@@ -31,7 +31,10 @@ export const FrequentlyBoughtInput = z.strictObject({
 });
 
 export const PublicErrorSchema = ToolErrorSchema.extend({ code: z.union([ToolErrorSchema.shape.code, z.enum(['internal_error', 'invalid_result'])]) });
-const RecoverySchema = z.strictObject({ action: z.enum(['get_cart', 'get_checkout_summary']), automaticReplay: z.literal(false) });
+export const RecoverySchema = z.discriminatedUnion('action', [
+  z.strictObject({ action: z.enum(['get_cart', 'get_checkout_summary']), automaticReplay: z.literal(false) }),
+  z.strictObject({ action: z.literal('list_pickup_slots'), fromDate: z.iso.date(), toDate: z.iso.date(), automaticReplay: z.literal(false) }),
+]);
 export const ErrorResultSchema = z.strictObject({ status: z.literal('error'), error: PublicErrorSchema,
   mutation: z.discriminatedUnion('outcome', [
     z.strictObject({ outcome: z.literal('not_applied') }),
@@ -79,3 +82,15 @@ export const PickupStoresInput = z.strictObject({
   city: z.string().trim().max(150).optional().describe('City resolved for the postal code, if known.'),
 });
 export const PickupStoresOutput = outputSchema(PickupStoresSchema);
+export const PickupSlotsInput = z.strictObject({
+  fromDate: z.iso.date().describe('First local calendar date to include, YYYY-MM-DD.'),
+  toDate: z.iso.date().describe('Last local calendar date to include, YYYY-MM-DD; at most 30 days after fromDate.'),
+});
+export const PickupSlotsOutput = outputSchema(PickupSlotsSchema);
+export const SetPickupStoreInput = z.strictObject({
+  storeId: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9_-]+$/)
+    .describe('storeId from list_pickup_stores; it must also be a fresh selectable option on the delivery page.'),
+  fromDate: z.iso.date().describe('First local date for recovery slot inspection if the store change outcome is uncertain.'),
+  toDate: z.iso.date().describe('Last local date for recovery slot inspection; at most 30 days after fromDate.'),
+});
+export const PickupStoreChangeOutput = outputSchema(PickupStoreChangeSchema);

@@ -10,6 +10,7 @@ import { createSerialTaskQueue } from '../src/session/queue.js';
 import { fixture, rawCart, productForm, cartControls, ordersPage, ok, pages } from './helpers.js';
 import { parseCouponsPage } from '../src/parsers/coupons.js';
 import { parsePickupStores } from '../src/parsers/stores.js';
+import { parsePickupSlots } from '../src/parsers/pickup-slots.js';
 
 export function injectedServices() {
   const state = { reads: 0, closes: 0, refreshes: 0, writes: 0, quantity: 2, cache: null as FavoritesCache | null };
@@ -23,6 +24,11 @@ export function injectedServices() {
     couponSelectionClient: { async setSelectedCoupons(couponIds: string[]) { state.writes++; return ok({ outcome: 'confirmed' as const, selectedCouponIds: couponIds }); },
       async fetchCheckoutContext() { state.reads++; return ok({ loyaltyCredit: { currency: 'EUR' as const, minorUnits: 40 }, selectedCouponIds: ['synthetic-coupon-001'] }); } },
     pickupStoreClient: { async fetchPickupStores() { state.reads++; return parsePickupStores(fixture('stores')); } },
+    pickupSlotClient: { async fetchPickupSlots(window) { state.reads++; return parsePickupSlots(fixture('pickup-slots'), window); } },
+    pickupStoreSelectionClient: { async setPickupStore(storeId, _window) { state.writes++; return ok({ outcome: 'confirmed' as const,
+      requestedStoreId: storeId, previousStoreId: 'synthetic-store-old', selectedStoreId: storeId,
+      storeName: 'Synthetic pickup store', storePostalCode: '0000-000', selectedStoreChanged: true,
+      cartAndCouponsNeedRevalidation: true }); } },
     ordersClient: { async fetchOrderHistory() { state.reads++; return ok(ordersPage); }, async fetchOrderLines() { return ok(fixture('order')); } },
     cartClient: { async fetchCart() { state.reads++; return ok(rawCart(state.quantity)); }, async fetchProductForm() { return ok(productForm()); },
       async fetchCartControls() { return ok(cartControls()); }, async submitCartMutation(action, params, method) {

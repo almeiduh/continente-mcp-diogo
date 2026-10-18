@@ -144,3 +144,32 @@ export const PickupStoreSchema = z.strictObject({
 export type PickupStore = z.infer<typeof PickupStoreSchema>;
 export const PickupStoresSchema = z.strictObject({ stores: z.array(PickupStoreSchema), completeness: z.enum(['complete', 'partial', 'unknown']), selectedStoreChanged: z.literal(false) });
 export type PickupStores = z.infer<typeof PickupStoresSchema>;
+export const PickupSlotSchema = z.strictObject({
+  date: z.iso.date(), weekday: z.string().trim().max(40).nullable(), weekdayShort: z.string().trim().max(20).nullable(),
+  startTime: z.string().trim().max(20).nullable(), endTime: z.string().trim().max(20).nullable(), shippingCost: z.string().trim().max(40).nullable(),
+});
+export const PickupSlotsSchema = z.strictObject({
+  pickupMode: z.enum(['pickup', 'unknown']), selectedStoreId: z.string().trim().min(1).max(100).nullable(), storePostalCode: z.string().trim().max(20).nullable(),
+  dateWindow: z.strictObject({ from: z.iso.date(), to: z.iso.date() }), dateYearBasis: z.literal('requested-window'),
+  coverage: z.literal('server-rendered-days-only'),
+  slots: z.array(PickupSlotSchema), completeness: z.enum(['complete', 'partial', 'unknown']),
+  selectedStoreChanged: z.literal(false), slotReserved: z.literal(false),
+});
+export type PickupSlot = z.infer<typeof PickupSlotSchema>;
+export type PickupSlots = z.infer<typeof PickupSlotsSchema>;
+export const PickupStoreChangeSchema = z.discriminatedUnion('outcome', [
+  z.strictObject({ outcome: z.literal('confirmed'), requestedStoreId: z.string().trim().min(1).max(100),
+    previousStoreId: z.string().trim().min(1).max(100), selectedStoreId: z.string().trim().min(1).max(100),
+    storeName: z.string().trim().max(250).nullable(), storePostalCode: z.string().trim().max(20).nullable(),
+    selectedStoreChanged: z.boolean(), cartAndCouponsNeedRevalidation: z.boolean() }),
+  z.strictObject({ outcome: z.literal('not_applied'), requestedStoreId: z.string().trim().min(1).max(100),
+    previousStoreId: z.string().trim().min(1).max(100), selectedStoreId: z.string().trim().min(1).max(100),
+    storeName: z.string().trim().max(250).nullable(), storePostalCode: z.string().trim().max(20).nullable(),
+    selectedStoreChanged: z.literal(false), cartAndCouponsNeedRevalidation: z.literal(false) }),
+  z.strictObject({ outcome: z.literal('unknown'), requestedStoreId: z.string().trim().min(1).max(100),
+    previousStoreId: z.string().trim().min(1).max(100), selectedStoreId: z.string().trim().min(1).max(100).nullable(),
+    storeName: z.string().trim().max(250).nullable(), storePostalCode: z.string().trim().max(20).nullable(),
+    selectedStoreChanged: z.boolean().nullable(), cartAndCouponsNeedRevalidation: z.literal(true),
+    recovery: z.strictObject({ action: z.literal('list_pickup_slots'), fromDate: z.iso.date(), toDate: z.iso.date(), automaticReplay: z.literal(false) }) }),
+]);
+export type PickupStoreChange = z.infer<typeof PickupStoreChangeSchema>;
