@@ -1,7 +1,7 @@
 import { validatorSchema, having, double, dataOf, textOf, statusOf, mutationOf, recoveryOf, toolError } from '../test-support/assertions.js';
 import { present, valueOf, errorOf, fixture, rawCart, ordersPage, ok, fail, unitRules } from '../test-support/helpers.js';
-import { CartData, FrequencyData, SearchData, CartOutput } from '../src/mcp/contracts.js';
-import { ProductIdSchema, CheckoutSummarySchema } from '../src/domain/index.js';
+import { CartData, FrequencyData, SearchData, CartOutput, CheckoutSummaryData } from '../src/mcp/contracts.js';
+import { ProductIdSchema } from '../src/domain/index.js';
 import { MutationData } from '../src/mcp/contracts.js';
 import type { StorefrontSession } from '../src/session/browser.js';
 import { injectedServices, connect } from '../test-support/mcp-fixture.js';
@@ -31,7 +31,7 @@ test('shopping tools work through real MCP transport using injected clients', as
   assert.equal(having(present(dataOf(cart, CartData).items[0]).quantity, 'value').value, 2);
   assert.deepEqual(Object.keys(present(cart.structuredContent)), ['result']);
   const summary = await client.callTool({ name: 'get_checkout_summary', arguments: {} });
-  const summaryData = dataOf(summary, CheckoutSummarySchema);
+  const summaryData = dataOf(summary, CheckoutSummaryData);
   assert.equal(summaryData.stage, 'basket');
   assert.equal(summaryData.provisional, true);
   assert.deepEqual(summaryData.loyaltyCredit, { currency: 'EUR', minorUnits: 40 });

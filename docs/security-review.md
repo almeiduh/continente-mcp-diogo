@@ -10,7 +10,7 @@ The extension binds saved sessions to the configured account and restricts coupo
 - Cart and coupon writes accept only specific retailer controller paths and observed HTTP methods. They reject foreign origins, query strings and fragments in supplied form actions.
 - Browser request interception blocks payment, order submission and slot reservation paths before transmission. It also blocks external document navigation. Service workers are disabled so they cannot bypass these browser routes.
 - Explicit payment navigation is rejected before creating a browser. API reads and writes do not follow redirects automatically.
-- Coupon selection uses fresh basket form fields and verifies the resulting selected IDs. An ambiguous result is reported as unknown and is not automatically replayed.
+- Coupon selection uses fresh basket form fields and verifies the resulting selected IDs. An ambiguous result is reported as unknown and is not automatically replayed. Unreadable post-write selections stay `null`; older observations are kept separately with explicit recovery instructions.
 - Store discovery sends the observed read-only GET request and does not call the store-context or reservation endpoints.
 - `set_pickup_store` accepts only a fresh primary-store option, calls the exact observed coverage GET and context POST endpoints, and reads the selected-store context back. An uncertain POST is never retried; a confirmed change asks callers to re-read cart/coupon context.
 - `list_pickup_slots` reads raw server-rendered HTML and reports slots only when one primary pickup step, selected radio, current store marker and shipment identifiers agree. Date windows are limited to the next 31 days because the retailer omits the year from slot labels.
@@ -25,6 +25,13 @@ Coupon eligibility and stacking are not inferred from a percentage alone. A sele
 Pickup-store context mutation is supported through `set_pickup_store`; pickup-slot reservation remains unavailable. `list_pickup_slots` reads only slot data already rendered in server HTML; it does not execute the delivery page's automatic slot-selection JavaScript or request additional dates. Results therefore remain partial when any slots are present. The MCP tools themselves use direct HTTP reads and do not run that page JavaScript.
 
 The current verified mutation contract changes stores only after pickup mode is already active. Switching from home delivery to pickup is not exposed because its selected-context/readback contract has not been verified.
+
+Pickup availability is a subset of the delivery-slot proposal in [issue #7](https://github.com/andredelgado/continente-mcp/issues/7).
+It includes `observedAt` and the last observed `catalogView`, but does not expose home-delivery
+slots, explicit per-slot availability or delivery thresholds. The automated suite cannot establish
+that a live retailer GET has no server-side effects. Live-account validation with redacted response
+fixtures and before/after checks of account and cart state remains necessary before claiming that
+issue is fully implemented.
 
 The tests use synthetic coupon, store, shipment and session data. Geographic examples use Coimbra with illustrative coordinates and postal codes; they are not customer addresses or captured account data. Mutation clients use synthetic transports. Authenticated retailer mutations are not part of the automated suite.
 

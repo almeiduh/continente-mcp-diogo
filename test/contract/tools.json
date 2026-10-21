@@ -264,59 +264,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -882,59 +845,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -1226,59 +1152,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -2277,59 +2166,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -2725,6 +2577,11 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
@@ -2733,7 +2590,8 @@
                       "totals",
                       "immediateDiscounts",
                       "loyaltyCredit",
-                      "selectedCouponIds"
+                      "selectedCouponIds",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -2843,59 +2701,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -3453,59 +3274,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -4638,59 +4422,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -5295,59 +5042,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -5759,59 +5469,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -6041,11 +5714,17 @@
                           "partial",
                           "unknown"
                         ]
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "coupons",
-                      "completeness"
+                      "completeness",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -6155,59 +5834,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -6603,59 +6245,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -7164,59 +6769,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -8169,59 +7737,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -8534,6 +8065,19 @@
                       "slotReserved": {
                         "type": "boolean",
                         "const": false
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "catalogView": {
+                        "type": "string",
+                        "enum": [
+                          "signed_in",
+                          "signed_out",
+                          "unknown"
+                        ]
                       }
                     },
                     "required": [
@@ -8546,7 +8090,9 @@
                       "slots",
                       "completeness",
                       "selectedStoreChanged",
-                      "slotReserved"
+                      "slotReserved",
+                      "observedAt",
+                      "catalogView"
                     ],
                     "additionalProperties": false
                   }
@@ -8656,59 +8202,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -9008,12 +8517,18 @@
                       "selectedStoreChanged": {
                         "type": "boolean",
                         "const": false
+                      },
+                      "observedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "stores",
                       "completeness",
-                      "selectedStoreChanged"
+                      "selectedStoreChanged",
+                      "observedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -9123,59 +8638,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -10477,59 +9955,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -10901,59 +10342,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -12033,59 +11437,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -12244,29 +11611,99 @@
                     ]
                   },
                   "data": {
-                    "type": "object",
-                    "properties": {
-                      "outcome": {
-                        "type": "string",
-                        "enum": [
-                          "confirmed",
-                          "unknown"
-                        ]
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "type": "string",
+                            "const": "confirmed"
+                          },
+                          "selectedCouponIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "selectedCouponIds",
+                          "observedAt"
+                        ],
+                        "additionalProperties": false
                       },
-                      "selectedCouponIds": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        }
+                      {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "type": "string",
+                            "const": "unknown"
+                          },
+                          "selectedCouponIds": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastObservedSelectedCouponIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          },
+                          "recovery": {
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_checkout_summary"
+                              },
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
+                              }
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "selectedCouponIds",
+                          "lastObservedSelectedCouponIds",
+                          "recovery",
+                          "observedAt"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "outcome",
-                      "selectedCouponIds"
-                    ],
-                    "additionalProperties": false
+                    ]
                   }
                 },
                 "required": [
@@ -12374,59 +11811,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_checkout_summary"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -12803,59 +12203,22 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "get_cart"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -13073,6 +12436,11 @@
                           },
                           "cartAndCouponsNeedRevalidation": {
                             "type": "boolean"
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           }
                         },
                         "required": [
@@ -13083,7 +12451,8 @@
                           "storeName",
                           "storePostalCode",
                           "selectedStoreChanged",
-                          "cartAndCouponsNeedRevalidation"
+                          "cartAndCouponsNeedRevalidation",
+                          "observedAt"
                         ],
                         "additionalProperties": false
                       },
@@ -13138,6 +12507,11 @@
                           "cartAndCouponsNeedRevalidation": {
                             "type": "boolean",
                             "const": false
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           }
                         },
                         "required": [
@@ -13148,7 +12522,8 @@
                           "storeName",
                           "storePostalCode",
                           "selectedStoreChanged",
-                          "cartAndCouponsNeedRevalidation"
+                          "cartAndCouponsNeedRevalidation",
+                          "observedAt"
                         ],
                         "additionalProperties": false
                       },
@@ -13242,6 +12617,11 @@
                               "automaticReplay"
                             ],
                             "additionalProperties": false
+                          },
+                          "observedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           }
                         },
                         "required": [
@@ -13253,7 +12633,8 @@
                           "storePostalCode",
                           "selectedStoreChanged",
                           "cartAndCouponsNeedRevalidation",
-                          "recovery"
+                          "recovery",
+                          "observedAt"
                         ],
                         "additionalProperties": false
                       }
@@ -13365,59 +12746,34 @@
                             "const": "unknown"
                           },
                           "recovery": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "enum": [
-                                      "get_cart",
-                                      "get_checkout_summary"
-                                    ]
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                            "type": "object",
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "const": "list_pickup_slots"
                               },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "action": {
-                                    "type": "string",
-                                    "const": "list_pickup_slots"
-                                  },
-                                  "fromDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "toDate": {
-                                    "type": "string",
-                                    "format": "date",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
-                                  },
-                                  "automaticReplay": {
-                                    "type": "boolean",
-                                    "const": false
-                                  }
-                                },
-                                "required": [
-                                  "action",
-                                  "fromDate",
-                                  "toDate",
-                                  "automaticReplay"
-                                ],
-                                "additionalProperties": false
+                              "fromDate": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "toDate": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "automaticReplay": {
+                                "type": "boolean",
+                                "const": false
                               }
-                            ]
+                            },
+                            "required": [
+                              "action",
+                              "fromDate",
+                              "toDate",
+                              "automaticReplay"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [

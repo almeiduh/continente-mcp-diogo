@@ -81,5 +81,5 @@ test('list_pickup_slots advertises rendered availability without store change or
   assert.equal(data.slots.length, 2);
   assert.equal(data.slotReserved, false);
   assert.equal(data.selectedStoreChanged, false);
-  assert.match(JSON.stringify(result.content), /did not change the selected store or reserve a slot/);
+  assert.match(JSON.stringify(result.content), /did not submit a store change or slot reservation/);
 });

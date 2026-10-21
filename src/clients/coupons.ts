@@ -73,6 +73,11 @@ export class CartCouponSelectionClient implements CouponSelectionGateway {
     const form = { carouselCoupons: JSON.stringify(coupons) };
     const action = before.value.action;
     if (!allowedCouponMutation(action, 'POST')) return failure('invalid_data', 'The coupon selection action is not allowlisted');
+    const unknown = (current: string[] | null): Result<CouponSelection, ToolError> => success({
+      outcome: 'unknown', selectedCouponIds: current,
+      lastObservedSelectedCouponIds: current ?? before.value.selectedIds,
+      recovery: { action: 'get_checkout_summary', automaticReplay: false },
+    });
 
     try {
       const lease = await this.site.session.ensureReady();
@@ -83,19 +88,19 @@ export class CartCouponSelectionClient implements CouponSelectionGateway {
       const response = await this.site.io(lease, () => lease.context.request.post(new URL(action, STOREFRONT_ORIGIN).href,
         { headers, form, timeout: requestTimeout(10000), maxRedirects: 0 }));
       const status = responseStatus(response, response.url?.() ?? action);
-      if (!status.ok) return { ok: true, value: { outcome: 'unknown', selectedCouponIds: before.value.selectedIds } };
+      if (!status.ok) return unknown(null);
       // The response is not treated as proof of selection; only the basket state confirms it.
       await this.site.io(lease, () => response.json());
       const after = await this.readBasketCoupons();
-      if (!after.ok) return { ok: true, value: { outcome: 'unknown', selectedCouponIds: before.value.selectedIds } };
+      if (!after.ok) return unknown(null);
       if (!sameIds(after.value.selectedIds, ids)) {
-        return { ok: true, value: { outcome: 'unknown', selectedCouponIds: after.value.selectedIds } };
+        return unknown(after.value.selectedIds);
       }
       return { ok: true, value: { outcome: 'confirmed', selectedCouponIds: after.value.selectedIds } };
     } catch (error) {
       if (error instanceof RequestStopped) throw error;
       // The request may have reached Continente. Do not replay it automatically.
-      return { ok: true, value: { outcome: 'unknown', selectedCouponIds: before.value.selectedIds } };
+      return unknown(null);
     }
   }
 

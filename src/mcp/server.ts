@@ -1,7 +1,7 @@
 import { McpServer, ProtocolError, ProtocolErrorCode, isCallToolResult } from '@modelcontextprotocol/server';
 import type { CallToolResult, GetPromptResult, ToolAnnotations, Transport } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { ExecutionErrorSchema, RecoverySchema } from './contracts.js';
+import { OperationExecutionErrorSchema, RecoverySchema } from './contracts.js';
 import { checkRequest, inRequest, RequestScope, RequestStopped } from '../session/request.js';
 import type { RequestOptions } from '../session/request.js';
 
@@ -140,7 +140,7 @@ export class ContinenteMcpServer {
     const message = code === 'internal_error' ? 'The tool could not complete.' : code === 'invalid_result' ? 'The tool returned an invalid result.' :
       code === 'deadline_exceeded' ? 'The request deadline was exceeded.' : code === 'queue_full' ? 'The session queue is full.' :
       code === 'server_closed' ? 'The server is shutting down.' : 'The request was cancelled.';
-    const structuredContent = ExecutionErrorSchema.parse({ result: { status: 'error', error: { code, message, retryable: false },
+    const structuredContent = OperationExecutionErrorSchema.parse({ result: { status: 'error', error: { code, message, retryable: false },
       ...(mutation ? { mutation: { outcome, ...(outcome === 'unknown' ? { recovery } : {}) } } : {}) } });
     return { isError: true, structuredContent, content: [{ type: 'text', text: message + (mutation && outcome === 'unknown' ? ` Use ${recovery.action} before another change.` : '') }] };
   }

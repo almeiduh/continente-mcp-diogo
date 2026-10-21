@@ -17,15 +17,21 @@ test('basket coupon parser deduplicates carousel clones and requires the exact a
   assert.equal(parseBasketCoupons(fixture('cart-coupons').replace('action="/', 'action="/nested/')).ok, false);
 });
 
-function selectionClient(selectionStates: string[][]) {
+function selectionClient(selectionStates: (string[] | null)[], postFailure?: 'lost' | 'http' | 'json') {
   let read = 0;
   const posts: { url: string; options: { form?: Record<string, string> } }[] = [];
   const page = {
     async waitForSelector() {}, async content() { return fixture('cart-coupons'); },
-    async evaluate() { return selectionStates[Math.min(read++, selectionStates.length - 1)] ?? []; },
+    async evaluate() { const value = selectionStates[Math.min(read++, selectionStates.length - 1)]; return value === undefined ? [] : value; },
   };
-  const response = { ok: () => true, status: () => 200, url: () => 'https://www.continente.pt/on/demandware.store/Sites-continente-Site/default/Cart-ApplyCustomerBenefits', async json() { return {}; } };
-  const lease = { page, context: { request: { async post(url: string | URL, options: { form?: Record<string, string> }) { posts.push({ url: String(url), options }); return response; } } } };
+  const response = { ok: () => postFailure !== 'http', status: () => postFailure === 'http' ? 401 : 200,
+    url: () => 'https://www.continente.pt/on/demandware.store/Sites-continente-Site/default/Cart-ApplyCustomerBenefits',
+    async json() { if (postFailure === 'json') throw new Error('Synthetic invalid response'); return {}; } };
+  const lease = { page, context: { request: { async post(url: string | URL, options: { form?: Record<string, string> }) {
+    posts.push({ url: String(url), options });
+    if (postFailure === 'lost') throw new Error('Synthetic lost response');
+    return response;
+  } } } };
   const site = double<StorefrontClient>({
     session: { async ensureReady() { return lease; } },
     async navigateToStorefrontPage() { return { ok: true, value: lease }; },
@@ -58,4 +64,24 @@ test('unknown coupon outcome is not replayed and unavailable IDs are rejected be
   const rejected = await unavailable.client.setSelectedCoupons(['unobserved-id']);
   assert.equal(rejected.ok, false);
   assert.equal(unavailable.posts.length, 0);
+});
+
+test('lost coupon responses keep the current selection null and preserve the older observation without replay', async () => {
+  for (const mode of ['lost', 'http', 'json'] as const) {
+    const uncertain = selectionClient([['synthetic-002']], mode);
+    const result = await uncertain.client.setSelectedCoupons(['synthetic-001']);
+    assert.deepEqual(result, { ok: true, value: { outcome: 'unknown', selectedCouponIds: null,
+      lastObservedSelectedCouponIds: ['synthetic-002'], recovery: { action: 'get_checkout_summary', automaticReplay: false } } });
+    assert.equal(uncertain.posts.length, 1, mode);
+  }
+});
+
+test('unreadable coupon readback differs from an observed mismatched or empty selection', async () => {
+  for (const after of [null, ['synthetic-002'], []]) {
+    const uncertain = selectionClient([['synthetic-002'], after]);
+    const result = await uncertain.client.setSelectedCoupons(['synthetic-001']);
+    assert.deepEqual(result, { ok: true, value: { outcome: 'unknown', selectedCouponIds: after,
+      lastObservedSelectedCouponIds: after ?? ['synthetic-002'], recovery: { action: 'get_checkout_summary', automaticReplay: false } } });
+    assert.equal(uncertain.posts.length, 1);
+  }
 });

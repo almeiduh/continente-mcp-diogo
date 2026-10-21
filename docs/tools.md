@@ -293,7 +293,7 @@ cart-specific eligibility, expiry or stacking. A complete empty list is reported
 page shows its visible empty-state marker. `benefitQualifier` carries the displayed qualifier
 when present.
 
-`data`: `coupons`, `completeness`.
+`data`: `observedAt`, `coupons`, `completeness`.
 
 ### `set_cart_coupons`
 
@@ -301,10 +301,15 @@ Sets the cart's selected coupon set using IDs returned by `list_coupons`. The se
 the basket form and sends its current description, amount, unit and carousel flag; callers cannot
 provide or override those fields. It reads the basket again and reports `outcome: confirmed` only
 when the live checkbox state matches the requested set. `outcome: unknown` means the request may
-have changed the cart; read the current basket before making another coupon change. The request is
+have changed the cart; use `get_checkout_summary` before making another coupon change. The request is
 never replayed automatically. An empty `couponIds` array requests clearing the selection.
 
-`data`: `outcome`, `selectedCouponIds`.
+`data`: `observedAt`, `outcome`, `selectedCouponIds`. On an unknown outcome, `selectedCouponIds`
+is `null` if the post-write selection could not be read. `lastObservedSelectedCouponIds` preserves
+the last readable selection, which may predate the write, and `recovery` specifies
+`{ action: "get_checkout_summary", automaticReplay: false }`. If readback succeeds but disagrees
+with the requested set, `selectedCouponIds` contains that observed set while the outcome stays
+unknown. An empty array means an observed empty selection; it never substitutes for missing data.
 
 ## Pickup stores
 
@@ -318,7 +323,7 @@ geolocation. `city` is optional.
 `selectedStoreChanged` is always `false`; this tool does not call the store-context endpoint. It
 does not list fees or inventory.
 
-`data`: `stores`, `completeness`, `selectedStoreChanged`.
+`data`: `observedAt`, `stores`, `completeness`, `selectedStoreChanged`.
 
 ### `list_pickup_slots`
 
@@ -333,10 +338,18 @@ interpretation.
 The result covers server-rendered days only, so it can list observed times but always reports
 `partial` when slots are present. It does not execute page JavaScript, request additional dates,
 expose shipment or reservation identifiers, change the store, reserve a slot, or open payment.
-`selectedStoreChanged` and `slotReserved` are always `false`.
+`selectedStoreChanged` and `slotReserved` are always `false`: the tool submits neither mutation.
+These flags do not establish that the retailer's GET handler has no server-side effects.
 
-`data`: `pickupMode`, `selectedStoreId`, `storePostalCode`, `dateWindow`, `dateYearBasis`, `coverage`, `slots`,
+`data`: `observedAt`, `catalogView`, `pickupMode`, `selectedStoreId`, `storePostalCode`, `dateWindow`, `dateYearBasis`, `coverage`, `slots`,
 `completeness`, `selectedStoreChanged`, `slotReserved`.
+
+`catalogView` reports the session's last observed sign-in state (`signed_in`, `signed_out` or
+`unknown`); it is not inferred from the presence of slot rows. This is a pickup-only subset of
+[issue #7](https://github.com/andredelgado/continente-mcp/issues/7), not its complete delivery-slot
+proposal. Home-delivery slots, explicit availability states and minimum-order/free-delivery
+thresholds are not exposed by this tool. Live-account validation with redacted response fixtures
+and confirmation that reading slots has no account or cart side effects remain follow-up work.
 
 ### `set_pickup_store`
 
@@ -352,6 +365,9 @@ affect them. An unknown result is never replayed and includes `list_pickup_slots
 caller-supplied date window. A no-op for the already selected store is confirmed without a write.
 This operation does not reserve a slot or open payment. Slot auto-selection performed by the
 retailer page itself is outside this operation; the MCP reads that page only through direct HTTP.
+
+Every result includes `observedAt`, including confirmed no-ops and unknown outcomes. The time
+records when the inspection finished; an unknown outcome remains unconfirmed.
 
 ## Cart
 
@@ -451,7 +467,7 @@ line prices. `loyaltyCredit` is a separate earned-credit amount and is never sub
 `null` when the basket page does not expose selected checkboxes. `stage` is `basket` and
 `provisional` is always `true`: this is not a final delivery or checkout quote.
 
-`data`: `stage`, `provisional`, `totals`, `immediateDiscounts`, `loyaltyCredit`,
+`data`: `observedAt`, `stage`, `provisional`, `totals`, `immediateDiscounts`, `loyaltyCredit`,
 `selectedCouponIds`.
 
 ### Changing the cart

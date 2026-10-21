@@ -14,6 +14,8 @@ All notable changes to this project are documented here. The format follows
 - `list_pickup_stores` uses the observed geocoded GET contract and returns pickup-capable store rows without changing selected-store context.
 - `list_pickup_slots` reads pickup mode and slot times already rendered in delivery-page HTML for an explicit date window; it does not run page JavaScript, reserve a slot, or change the store.
 - `set_pickup_store` changes an already-active primary pickup context through the observed coverage/context flow and verifies readback; switching from home delivery and reserving a slot remain unsupported.
+- Coupon and pickup results include `observedAt`; pickup availability also includes the last observed `catalogView`. Pickup availability covers existing pickup mode and server-rendered days only; the full delivery-slot proposal and live-account side-effect validation remain follow-up work.
+- Unknown coupon changes distinguish an unreadable current selection (`selectedCouponIds: null`) from `lastObservedSelectedCouponIds` and include `get_checkout_summary` recovery without automatic replay. New coupon and pickup mutation recovery schemas are scoped to those tools; existing tool schemas remain unchanged.
 
 ### Security
 

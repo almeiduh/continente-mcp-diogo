@@ -338,7 +338,7 @@ export class ShoppingHandlers {
     if (!context.ok) return this.failed(context.error);
     const cart = await this.recover(() => this.services.cart.getCart());
     if (!cart.ok) return this.failed(cart.error);
-    const data = { stage: 'basket' as const, provisional: true as const, totals: cart.value.totals,
+    const data = { observedAt: this.observedAt(), stage: 'basket' as const, provisional: true as const, totals: cart.value.totals,
       immediateDiscounts: cart.value.totals.discounts, loyaltyCredit: context.value.loyaltyCredit,
       selectedCouponIds: context.value.selectedCouponIds };
     const loyalty = data.loyaltyCredit ? `€${(data.loyaltyCredit.minorUnits / 100).toFixed(2)}` : 'unknown';
@@ -355,7 +355,7 @@ export class ShoppingHandlers {
       `${item.availability ? `; ${item.availability}` : ''}` +
       `${item.couponId ? `\n   couponId: ${item.couponId}` : '\n   couponId: unavailable'}`));
     const completeness = result.value.completeness;
-    return response(result.value, (coupons.length ? `Coupons shown on the account page:\n\n${list}` : 'No account coupons are available.') +
+    return response({ ...result.value, observedAt: this.observedAt() }, (coupons.length ? `Coupons shown on the account page:\n\n${list}` : 'No account coupons are available.') +
       '\nCart eligibility, expiry and stacking are unknown unless stated in the returned fields; selecting a coupon is not supported by this tool.',
     completeness === 'partial' || completeness === 'unknown' ? 'partial' : coupons.length ? 'success' : 'empty');
   }
@@ -363,11 +363,14 @@ export class ShoppingHandlers {
   async setCartCoupons(couponIds: string[]): Promise<CallToolResult> {
     const result = await this.recover(() => this.services.couponSelection.setSelectedCoupons(couponIds));
     if (!result.ok) return this.failed(result.error);
-    const confirmed = result.value.outcome === 'confirmed';
-    return response(result.value, confirmed
-      ? `The basket confirms ${result.value.selectedCouponIds.length} selected coupon(s).`
-      : `Coupon selection is uncertain. The last observed selected IDs are ${result.value.selectedCouponIds.length ? result.value.selectedCouponIds.join(', ') : 'none'}. Read the basket before making another coupon change; this request was not replayed.`,
-    confirmed ? 'success' : 'partial');
+    const data = result.value;
+    const text = data.outcome === 'confirmed'
+      ? `The basket confirms ${data.selectedCouponIds.length} selected coupon(s).`
+      : `Coupon selection is uncertain. ${data.selectedCouponIds === null ? 'The current selection could not be read.'
+        : `The basket currently shows ${data.selectedCouponIds.join(', ') || 'no selected coupons'}, which does not match the request.`} ` +
+        `Last observed selected IDs: ${data.lastObservedSelectedCouponIds.join(', ') || 'none'}. ` +
+        'Use get_checkout_summary before making another coupon change; this request was not replayed.';
+    return response({ ...data, observedAt: this.observedAt() }, text, data.outcome === 'confirmed' ? 'success' : 'partial');
   }
 
   async listPickupStores(query: { postalCode: string; latitude: number; longitude: number; city?: string }): Promise<CallToolResult> {
@@ -377,7 +380,7 @@ export class ShoppingHandlers {
     const list = numbered(data.stores.map(store => `${store.name}${store.city ? ` — ${store.city}` : ''}` +
       `${store.address1 ? `\n   ${store.address1}` : ''}${store.address2 ? `, ${store.address2}` : ''}` +
       `\n   storeId: ${store.storeId}`));
-    return response(data, (list ? `Pickup stores near ${query.postalCode}:\n\n${list}` : `No pickup stores were listed near ${query.postalCode}.`) +
+    return response({ ...data, observedAt: this.observedAt() }, (list ? `Pickup stores near ${query.postalCode}:\n\n${list}` : `No pickup stores were listed near ${query.postalCode}.`) +
       '\nThis lookup did not change the selected store. Pickup-slot availability is not included.',
     data.completeness === 'complete' ? data.stores.length ? 'success' : 'empty' : 'partial');
   }
@@ -391,7 +394,8 @@ export class ShoppingHandlers {
     const text = data.completeness === 'complete'
       ? (slots ? `Available pickup slots for ${mode}, ${window.from} to ${window.to}:\n${slots}` : `No pickup slots were listed for ${mode}, ${window.from} to ${window.to}.`)
       : `Pickup slot availability is incomplete or unknown for ${window.from} to ${window.to}; ${mode}.`;
-    return response(data, `${text}\nThis read did not change the selected store or reserve a slot.`, data.completeness === 'complete' ? 'success' : 'partial');
+    return response({ ...data, observedAt: this.observedAt(), catalogView: await this.catalogView() },
+      `${text}\nThis tool did not submit a store change or slot reservation.`, data.completeness === 'complete' ? 'success' : 'partial');
   }
 
   async setPickupStore(storeId: string, recoveryWindow: PickupSlotWindow): Promise<CallToolResult> {
@@ -405,7 +409,7 @@ export class ShoppingHandlers {
       : data.outcome === 'not_applied'
         ? `The pickup store was not changed; ${data.storeName ?? data.selectedStoreId} remains selected.`
         : `The pickup store change outcome is unknown. Do not repeat it. Use list_pickup_slots for ${recoveryWindow.from} to ${recoveryWindow.to}, then re-read the cart and coupons.`;
-    return response(data, `${text} This operation did not reserve a slot or open payment.`, data.outcome === 'unknown' ? 'partial' : 'success');
+    return response({ ...data, observedAt: this.observedAt() }, `${text} This operation did not reserve a slot or open payment.`, data.outcome === 'unknown' ? 'partial' : 'success');
   }
 
   private async mutation(result: MutationResult, operation: 'add' | 'set' | 'remove'): Promise<CallToolResult> {

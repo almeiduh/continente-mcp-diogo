@@ -257,9 +257,17 @@ export const CouponSchema = z.strictObject({
 export type Coupon = z.infer<typeof CouponSchema>;
 export const CouponListSchema = z.strictObject({ coupons: z.array(CouponSchema), completeness: z.enum(['complete', 'partial', 'unknown']) });
 export type CouponList = z.infer<typeof CouponListSchema>;
-export const CouponSelectionSchema = z.strictObject({
-  outcome: z.enum(['confirmed', 'unknown']), selectedCouponIds: z.array(z.string().trim().min(1).max(200)),
-});
+const CouponIdsSchema = z.array(z.string().trim().min(1).max(200));
+export const CouponSelectionSchema = z.discriminatedUnion('outcome', [
+  z.strictObject({ outcome: z.literal('confirmed'), selectedCouponIds: CouponIdsSchema }),
+  z.strictObject({ outcome: z.literal('unknown'),
+    /** Null when the current selection could not be read after the write. */
+    selectedCouponIds: CouponIdsSchema.nullable(),
+    /** The last readable selection, which may predate the write. */
+    lastObservedSelectedCouponIds: CouponIdsSchema,
+    recovery: z.strictObject({ action: z.literal('get_checkout_summary'), automaticReplay: z.literal(false) }),
+  }),
+]);
 export type CouponSelection = z.infer<typeof CouponSelectionSchema>;
 
 export const PickupStoreSchema = z.strictObject({
@@ -282,6 +290,7 @@ export const PickupSlotsSchema = z.strictObject({
   dateWindow: z.strictObject({ from: z.iso.date(), to: z.iso.date() }), dateYearBasis: z.literal('requested-window'),
   coverage: z.literal('server-rendered-days-only'),
   slots: z.array(PickupSlotSchema), completeness: z.enum(['complete', 'partial', 'unknown']),
+  /** These flags describe writes issued by the tool, not unverified retailer-side GET effects. */
   selectedStoreChanged: z.literal(false), slotReserved: z.literal(false),
 });
 export type PickupSlot = z.infer<typeof PickupSlotSchema>;
